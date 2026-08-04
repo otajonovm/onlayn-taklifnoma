@@ -1,0 +1,62 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    background-color: #FDFBF7;
+    color: #1E293B;
+  }
+
+  h1, h2, h3, .font-serif-luxury {
+    font-family: 'Playfair Display', 'Cormorant Garamond', Georgia, serif;
+  }
+
+  .font-serif-cormorant {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+  }
+}
+
+.gold-gradient-text {
+  background: linear-gradient(135deg, #C4A484 0%, #D4A373 40%, #E8C9A8 70%, #D4A373 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.gold-border-glow {
+  border: 1px solid rgba(212, 163, 115, 0.25);
+  box-shadow: 0 0 12px rgba(212, 163, 115, 0.08);
+}
+
+.watermark-pattern {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    rgba(212, 163, 115, 0.06),
+    rgba(212, 163, 115, 0.06) 20px,
+    transparent 20px,
+    transparent 40px
+  );
+}
+
+@keyframes floatSlow {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-6px); }
+}
+
+.animate-float {
+  animation: floatSlow 5s ease-in-out infinite;
+}
+
+@keyframes pulseGold {
+  0%, 100% { opacity: 0.7; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.02); }
+}
+
+.animate-gold-pulse {
+  animation: pulseGold 3s ease-in-out infinite;
+}
+
+.paper-texture {
+  background-color: #FDFBF7;
+  background-image: radial-gradient(rgba(212, 163, 115, 0.12) 0.5px, transparent 0.5px);
+  background-size: 20px 20px;
+}
