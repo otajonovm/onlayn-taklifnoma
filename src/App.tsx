@@ -73,7 +73,22 @@ function AppContent() {
       const qs = mode === 'preview' ? '?preview=1' : '';
       const headers = mode === 'preview' ? adminAuthHeaders() : {};
       const res = await fetch(`/api/invitations/${id}${qs}`, { headers });
-      const data = await res.json();
+      const text = await res.text();
+      let data: {
+        success?: boolean;
+        data?: Invitation;
+        message?: string;
+        code?: string;
+      };
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        setErrorMsg(
+          'Server API topilmadi. Vercel sozlamalarini tekshiring yoki sahifani yangilang.'
+        );
+        setInvitationData(null);
+        return;
+      }
 
       if (res.ok && data.success && data.data) {
         setInvitationData(data.data);

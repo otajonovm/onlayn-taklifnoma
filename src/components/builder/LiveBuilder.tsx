@@ -88,12 +88,24 @@ export const LiveBuilder: React.FC<LiveBuilderProps> = ({
         body: JSON.stringify(payload),
       });
 
-      const data = await res.json();
-      if (data.success) {
+      const text = await res.text();
+      let data: { success?: boolean; data?: { id: string }; message?: string };
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        throw new Error(
+          'Server API ishlamayapti. Vercel’da qayta deploy qiling yoki /api yo‘lini tekshiring.'
+        );
+      }
+
+      if (data.success && data.data?.id) {
         onInvitationCreated(data.data.id);
+      } else {
+        throw new Error(data.message || 'Taklifnoma yaratilmadi');
       }
     } catch (err) {
       console.error(err);
+      alert(err instanceof Error ? err.message : 'Xatolik yuz berdi');
     } finally {
       setIsSubmitting(false);
     }
