@@ -11,9 +11,9 @@
     "build": "npm run build:web && npm run build:server && npm run build:api",
     "build:web": "vite build",
     "build:server": "esbuild server.ts --bundle --platform=node --target=node20 --format=cjs --outfile=dist/server.cjs --packages=external",
-    "build:api": "esbuild src/server/vercelHandler.ts --bundle --platform=node --target=node20 --format=cjs --outfile=api/[...path].cjs --packages=external --footer:js=\"module.exports = module.exports.default || module.exports;\"",
+    "build:api": "esbuild src/server/vercelHandler.ts --bundle --platform=node --target=node20 --format=cjs --outfile=api/index.cjs --packages=external --footer:js=\"module.exports = module.exports.default || module.exports;\"",
     "start": "node dist/server.cjs",
-    "clean": "rm -rf dist \"api/[...path].cjs\"",
+    "clean": "rm -rf dist api/index.cjs",
     "lint": "tsc --noEmit"
   },
   "dependencies": {

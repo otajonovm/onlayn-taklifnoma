@@ -845,7 +845,17 @@ function createApiApp() {
 
 // src/server/vercelHandler.ts
 var app = createApiApp();
+function restoreOriginalUrl(req) {
+  const forwarded = req.headers["x-forwarded-uri"] || req.headers["x-invoke-path"];
+  if (typeof forwarded === "string" && forwarded.startsWith("/api")) {
+    const queryIndex = req.url?.indexOf("?") ?? -1;
+    const query = queryIndex >= 0 ? req.url.slice(queryIndex) : "";
+    const pathOnly = forwarded.split("?")[0];
+    req.url = pathOnly + (query && !forwarded.includes("?") ? query : forwarded.includes("?") ? "?" + forwarded.split("?")[1] : "");
+  }
+}
 function handler(req, res) {
+  restoreOriginalUrl(req);
   app(req, res);
 }
 module.exports = module.exports.default || module.exports;
