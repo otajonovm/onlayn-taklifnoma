@@ -155,6 +155,30 @@ export function createApiApp(): Express {
 
   const app = express();
 
+  // Security headers (tsparticles / Vite may need 'unsafe-eval' under script-src)
+  app.use((_req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    res.setHeader(
+      'Content-Security-Policy',
+      [
+        "default-src 'self'",
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+        "font-src 'self' https://fonts.gstatic.com data:",
+        "img-src 'self' data: blob: https: http:",
+        "media-src 'self' blob:",
+        "connect-src 'self' https:",
+        "worker-src 'self' blob:",
+        "frame-ancestors 'self'",
+        "base-uri 'self'",
+        "object-src 'none'",
+      ].join('; ')
+    );
+    next();
+  });
+
   // Serverless runtimes may consume the request stream and hand us a parsed
   // body; re-parsing would then silently yield an empty object.
   app.use((req, _res, next) => {
