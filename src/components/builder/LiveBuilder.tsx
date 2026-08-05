@@ -330,7 +330,9 @@ export const LiveBuilder: React.FC<LiveBuilderProps> = ({
         throw new Error(
           res.status === 413
             ? 'Rasm juda katta. Kichikroq rasm tanlang.'
-            : `Server javob bermadi (HTTP ${res.status}). Birozdan keyin qayta urinib ko‘ring.`
+            : res.status === 404
+              ? 'API topilmadi (404). Deploy da /api yo‘li ulanganini tekshiring.'
+              : `Server javob bermadi (HTTP ${res.status}). Birozdan keyin qayta urinib ko‘ring.`
         );
       }
 

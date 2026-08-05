@@ -1,9 +1,14 @@
 {
-  "buildCommand": "npm run build:web && npm run build:api",
+  "buildCommand": "npm run build:web",
   "outputDirectory": "dist",
-  "framework": "vite",
+  "functions": {
+    "api/**/*.ts": {
+      "includeFiles": "{src/**,package.json}"
+    }
+  },
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api" },
-    { "source": "/((?!api$).*)", "destination": "/index.html" }
+    { "source": "/api/health", "destination": "/api/health" },
+    { "source": "/api/(.*)", "destination": "/api/index" },
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }
