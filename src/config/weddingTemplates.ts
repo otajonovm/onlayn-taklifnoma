@@ -1,6 +1,6 @@
-import { WEDDING_IMAGES } from '@/data/weddingImagery';
+import { WEDDING_IMAGES } from '../data/weddingImagery';
 import { BRAND } from './themes';
-import type { TemplateStyleOverrides } from '@/types/styleTokens';
+import type { TemplateStyleOverrides } from '../types/styleTokens';
 
 export type WeddingCategory = 'wedding';
 

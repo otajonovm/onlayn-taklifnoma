@@ -154,6 +154,15 @@ export function createApiApp(): Express {
   seedDemoData();
 
   const app = express();
+
+  // Serverless runtimes may consume the request stream and hand us a parsed
+  // body; re-parsing would then silently yield an empty object.
+  app.use((req, _res, next) => {
+    const anyReq = req as Request & { _body?: boolean };
+    if (req.body && typeof req.body === 'object') anyReq._body = true;
+    next();
+  });
+
   // Base64 rasmlar uchun yetarli limit
   app.use(express.json({ limit: '15mb' }));
 

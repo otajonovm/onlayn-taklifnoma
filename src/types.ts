@@ -1,4 +1,4 @@
-import type { TemplateStyleOverrides } from '@/types/styleTokens';
+import type { TemplateStyleOverrides } from './types/styleTokens';
 
 export type CategoryType = 'wedding';
 
