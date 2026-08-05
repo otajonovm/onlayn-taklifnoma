@@ -20,7 +20,14 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
 
     const audio = new Audio(audioUrl);
     audio.loop = true;
+    audio.preload = 'metadata';
     audioRef.current = audio;
+
+    const onError = () => {
+      console.warn('Audio yuklanmadi:', audioUrl);
+      setIsPlaying(false);
+    };
+    audio.addEventListener('error', onError);
 
     if (autoPlay) {
       audio.play().then(() => {
@@ -31,6 +38,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
     }
 
     return () => {
+      audio.removeEventListener('error', onError);
       audio.pause();
       audioRef.current = null;
     };

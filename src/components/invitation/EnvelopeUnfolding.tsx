@@ -31,6 +31,7 @@ export const EnvelopeUnfolding: React.FC<EnvelopeUnfoldingProps> = ({
   const [phase, setPhase] = useState<'idle' | 'opening' | 'done'>('idle');
   const accent = theme.accentColor || BRAND.accent;
   const paper = theme.envelopeColor || '#FAF6F0';
+  const waxSymbol = (theme.waxSealSymbol ?? '').trim();
   const paperDeep = '#E6D4BE';
   const paperMid = '#F2E5D5';
   const isOpening = phase === 'opening';
@@ -317,13 +318,23 @@ export const EnvelopeUnfolding: React.FC<EnvelopeUnfoldingProps> = ({
                   style={{ borderColor: 'rgba(255,255,255,0.4)' }}
                   aria-hidden="true"
                 />
-                <Heart
-                  className="relative w-7 h-7"
-                  style={{ color: '#FFF8F0' }}
-                  fill="#FFF8F0"
-                  strokeWidth={1.2}
-                  aria-hidden="true"
-                />
+                {waxSymbol ? (
+                  <span
+                    className="relative w-7 h-7 flex items-center justify-center"
+                    style={{ color: '#FFF8F0', fontSize: 26, lineHeight: 1 }}
+                    aria-hidden="true"
+                  >
+                    {waxSymbol}
+                  </span>
+                ) : (
+                  <Heart
+                    className="relative w-7 h-7"
+                    style={{ color: '#FFF8F0' }}
+                    fill="#FFF8F0"
+                    strokeWidth={1.2}
+                    aria-hidden="true"
+                  />
+                )}
               </motion.button>
             </div>
           </motion.div>

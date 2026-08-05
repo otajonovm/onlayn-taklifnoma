@@ -8,6 +8,7 @@ interface AgendaTimelineProps {
   accentColor?: string;
   primaryColor?: string;
   textColor?: string;
+  headerLabel?: string;
 }
 
 const DEFAULT_WEDDING_AGENDA: AgendaItem[] = [
@@ -21,6 +22,7 @@ export const AgendaTimeline: React.FC<AgendaTimelineProps> = ({
   agenda,
   accentColor = BRAND.accent,
   textColor = BRAND.text,
+  headerLabel = 'Dastur',
 }) => {
   const displayAgenda = agenda && agenda.length > 0 ? agenda : DEFAULT_WEDDING_AGENDA;
 
@@ -46,7 +48,7 @@ export const AgendaTimeline: React.FC<AgendaTimelineProps> = ({
   return (
     <div className="my-2 max-w-lg mx-auto">
       <p className="text-center text-xs uppercase tracking-widest font-medium mb-6" style={{ color: accentColor }}>
-        — Dastur —
+        — {headerLabel} —
       </p>
 
       <div className="relative border-l ml-6 pl-6 space-y-6" style={{ borderColor: `${accentColor}35` }}>

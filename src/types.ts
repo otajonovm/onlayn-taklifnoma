@@ -1,3 +1,5 @@
+import type { TemplateStyleOverrides } from '@/types/styleTokens';
+
 export type CategoryType = 'wedding';
 
 export interface ThemeConfig {
@@ -74,6 +76,11 @@ export interface Invitation {
   telegramChatId?: string;
   agenda?: AgendaItem[];
   dressCode?: DressCodeConfig;
+  /** Per-invitation style overrides (merged over template.styles) */
+  customStyles?: Partial<TemplateStyleOverrides>;
+  /** User-selected / uploaded images */
+  coverImage?: string;
+  venueImage?: string;
   rsvps?: Rsvp[];
   createdAt: string;
   updatedAt: string;

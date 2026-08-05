@@ -9,6 +9,11 @@ interface CalendarGlowSyncProps {
   venueName?: string;
   locationAddress?: string;
   accentColor?: string;
+
+  saveTheDateLabel?: string;
+  dayTouchedLabel?: string;
+  monthNamesUz?: string[];
+  daysOfWeekUz?: string[];
 }
 
 export const CalendarGlowSync: React.FC<CalendarGlowSyncProps> = ({
@@ -17,6 +22,23 @@ export const CalendarGlowSync: React.FC<CalendarGlowSyncProps> = ({
   venueName = 'Tantanalar Saroyi',
   locationAddress = 'Toshkent sh.',
   accentColor = BRAND.accent,
+  saveTheDateLabel = 'Save the Date',
+  dayTouchedLabel = 'Bizning baxtli kunimiz',
+  monthNamesUz = [
+    'Yanvar',
+    'Fevral',
+    'Mart',
+    'Aprel',
+    'May',
+    'Iyun',
+    'Iyul',
+    'Avgust',
+    'Sentabr',
+    'Oktabr',
+    'Noyabr',
+    'Dekabr',
+  ],
+  daysOfWeekUz = ['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Ya'],
 }) => {
   const [added, setAdded] = useState(false);
   const [dayTouched, setDayTouched] = useState(false);
@@ -37,13 +59,7 @@ export const CalendarGlowSync: React.FC<CalendarGlowSyncProps> = ({
   const monthIndex = dateObj.getMonth();
   const targetDay = dateObj.getDate();
 
-  const monthsUz = [
-    'Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun',
-    'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr',
-  ];
-  const daysOfWeekUz = ['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Ya'];
-
-  const monthName = monthsUz[monthIndex];
+  const monthName = monthNamesUz[monthIndex];
   const hours = String(dateObj.getHours()).padStart(2, '0');
   const minutes = String(dateObj.getMinutes()).padStart(2, '0');
   const timeStr = `${hours}:${minutes}`;
@@ -123,7 +139,7 @@ export const CalendarGlowSync: React.FC<CalendarGlowSyncProps> = ({
             }}
           >
             <CalendarHeart className="w-3.5 h-3.5" />
-            <span>Save the Date</span>
+            <span>{saveTheDateLabel}</span>
           </motion.div>
 
           {/* Hero typography: giant day */}
@@ -134,7 +150,7 @@ export const CalendarGlowSync: React.FC<CalendarGlowSyncProps> = ({
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
               className="relative cursor-pointer group outline-none"
-              aria-label={`${targetDay} ${monthName} — bizning kunimiz`}
+              aria-label={`${targetDay} ${monthName} — ${dayTouchedLabel}`}
             >
               <span
                 className="block text-7xl sm:text-8xl font-serif font-normal leading-none tracking-tight transition-colors"
@@ -175,7 +191,7 @@ export const CalendarGlowSync: React.FC<CalendarGlowSyncProps> = ({
                   style={{ color: accentColor }}
                 >
                   <Heart className="w-3 h-3" fill={accentColor} />
-                  Bizning baxtli kunimiz
+                  {dayTouchedLabel}
                 </motion.p>
               )}
             </AnimatePresence>

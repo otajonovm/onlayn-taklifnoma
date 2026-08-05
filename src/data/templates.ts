@@ -20,8 +20,8 @@ export const TEMPLATES: Template[] = [
     thumbnail: 'https://images.unsplash.com/photo-1522673607200-164d1b6ce486?auto=format&fit=crop&w=800&q=80',
     description: "Nafis oq atirgul bezaklari va ochiluvchi konvertli minimalist to'y taklifnomasi.",
     isPremium: true,
-    sampleMusicUrl: 'https://cdn.pixabay.com/download/audio/2022/03/15/audio_10822601ff.mp3?filename=wedding-piano-10103.mp3',
-    sampleMusicTitle: 'Klassik Piano & Mayin Simfoniya',
+    sampleMusicUrl: '/audio/oh-sevaman-yor.mp3',
+    sampleMusicTitle: 'Oh Sevaman Yor — Ibrohim Nurmatov',
     defaultTheme: {
       ...lightWeddingTheme,
       waxSealSymbol: '❤️',

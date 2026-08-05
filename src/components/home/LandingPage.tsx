@@ -1,8 +1,8 @@
 import React from 'react';
-import { TEMPLATES } from '../../data/templates';
 import { BRAND, WEDDING_CATEGORY_LABEL } from '../../config/themes';
 import { WEDDING_IMAGES } from '../../data/weddingImagery';
 import { ArrowRight, Heart, Send, Sparkles } from 'lucide-react';
+import { WEDDING_TEMPLATES } from '@/config/weddingTemplates';
 
 interface LandingPageProps {
   onCreateClick: () => void;
@@ -154,9 +154,39 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </p>
           </div>
 
-          <div className="grid grid-cols-1 max-w-sm mx-auto gap-6">
-            {TEMPLATES.map((template) => (
-              <div key={template.id} className="group flex flex-col">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
+            {Object.values(WEDDING_TEMPLATES).map((template) => {
+              const coupleRaw = template.content.hero.coupleNames;
+              const coupleParts = coupleRaw.split('&').map((s) => s.trim());
+              const groom = coupleParts[0] || '';
+              const bride = coupleParts[1] || '';
+
+              const monthNamesUz = [
+                'Yanvar',
+                'Fevral',
+                'Mart',
+                'Aprel',
+                'May',
+                'Iyun',
+                'Iyul',
+                'Avgust',
+                'Sentabr',
+                'Oktabr',
+                'Noyabr',
+                'Dekabr',
+              ];
+              const d = new Date(`${template.content.calendar.eventDate}T00:00:00`);
+              const dateLabel = !isNaN(d.getTime())
+                ? `${d.getDate()}-${monthNamesUz[d.getMonth()]}-${d.getFullYear()}`
+                : template.content.calendar.eventDate;
+
+              const thumb =
+                template.thumbnail ||
+                template.content.hero.coverImage ||
+                WEDDING_IMAGES.ringsClose;
+
+              return (
+                <div key={template.id} className="group flex flex-col">
                 <div
                   className="relative aspect-4/5 overflow-hidden border mb-4"
                   style={{
@@ -165,9 +195,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                     boxShadow: '0 16px 36px rgba(30, 41, 59, 0.05)',
                   }}
                 >
-                  {/* Invitation hero preview (same composition as main hero) */}
                   <img
-                    src={WEDDING_IMAGES.ringsClose}
+                    src={thumb}
                     alt=""
                     aria-hidden="true"
                     className="absolute inset-0 w-full h-full object-cover opacity-90 transition-transform duration-700 group-hover:scale-105"
@@ -180,26 +209,26 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                     }}
                   >
                     <p
-                      className="text-[10px] uppercase tracking-[0.3em] mb-3"
+                      className="text-[10px] uppercase tracking-[0.3em] mb-2"
                       style={{ color: BRAND.accent }}
                     >
-                      Nikoh To'yi
+                      {template.id}
                     </p>
-                    <h3 className="text-2xl font-serif mb-2" style={{ color: BRAND.text }}>
-                      Alisher{' '}
+                    <h3 className="text-xl font-serif mb-2" style={{ color: BRAND.text }}>
+                      {groom}{' '}
                       <span className="italic font-light" style={{ color: BRAND.accent }}>
                         &
                       </span>{' '}
-                      Nigora
+                      {bride}
                     </h3>
                     <div className="w-10 h-px mb-3" style={{ backgroundColor: BRAND.accent }} />
                     <p className="text-sm" style={{ color: BRAND.muted }}>
-                      Shanba, 16-Avgust 2026
+                      {dateLabel}
                     </p>
                   </div>
                 </div>
                 <h3 className="font-serif text-lg mb-1" style={{ color: BRAND.text }}>
-                  {template.title}
+                  {template.name}
                 </h3>
                 <p className="text-xs leading-relaxed mb-4 flex-1" style={{ color: BRAND.muted }}>
                   {template.description}
@@ -212,8 +241,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   <span>Tanlash</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
-              </div>
-            ))}
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>

@@ -1,25 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Invitation, Template } from '@/types';
-import { TEMPLATES } from '@/data/templates';
+import { Invitation } from '@/types';
 import { BRAND } from '@/config/themes';
 import { EnvelopeUnfolding } from './EnvelopeUnfolding';
 import { AudioPlayer } from './AudioPlayer';
-import { UzbekCountdown } from './UzbekCountdown';
-import { LocationNavigator } from './LocationNavigator';
-import { AgendaTimeline } from './AgendaTimeline';
-import { RsvpSection } from './RsvpSection';
-import { LuxuryFloralCard } from './LuxuryFloralCard';
 import { ActivationModal } from '../modals/ActivationModal';
-import { CalendarGlowSync } from './CalendarGlowSync';
 import { GoldParticlesBackground } from '@/components/ui/GoldParticlesBackground';
-import { InvitationFrame } from '@/components/ui/ornaments/InvitationFrame';
-import { OrnamentDivider } from '@/components/ui/ornaments';
-import { SoftSection } from './SoftSection';
-import { RevealWords, RevealLine, DrawLine } from './RevealText';
-import { WEDDING_IMAGES } from '@/data/weddingImagery';
+import { RevealWords } from './RevealText';
 import { guestShareUrl } from '@/lib/adminAuth';
 import { Sparkles, Share2, CheckCircle2, Lock } from 'lucide-react';
 import { motion } from 'motion/react';
+import { WEDDING_TEMPLATES } from '@/config/weddingTemplates';
+import { WeddingRenderer, resolveWeddingTemplate } from '../templates/WeddingRenderer';
 
 interface InvitationCardProps {
   invitation: Invitation;
@@ -45,17 +36,50 @@ export const InvitationCard: React.FC<InvitationCardProps> = ({
     if (role) setRoleParam(role);
   }, []);
 
-  const template: Template =
-    TEMPLATES.find((t) => t.id === invitation.templateId) || TEMPLATES[0];
+  const template =
+    WEDDING_TEMPLATES[invitation.templateId] ||
+    WEDDING_TEMPLATES[Object.keys(WEDDING_TEMPLATES)[0]];
 
-  const theme = {
-    ...template.defaultTheme,
-    backgroundColor: BRAND.bg,
-    cardBgColor: BRAND.white,
-    textColor: BRAND.text,
-    accentColor: template.defaultTheme.accentColor || BRAND.accent,
-    primaryColor: BRAND.white,
-  };
+  const parsed = invitation.eventDate ? new Date(invitation.eventDate) : null;
+  const datePart = parsed && !isNaN(parsed.getTime()) ? parsed.toISOString().slice(0, 10) : template.content.calendar.eventDate;
+  const timePart = parsed && !isNaN(parsed.getTime()) ? parsed.toISOString().slice(11, 16) : template.content.calendar.eventTime;
+
+  const coupleNames =
+    invitation.groomName && invitation.brideName
+      ? `${invitation.groomName} & ${invitation.brideName}`
+      : template.content.hero.coupleNames;
+
+  const contentOverrides = {
+    hero: {
+      ...template.content.hero,
+      title: invitation.eventTitle,
+      coupleNames,
+    },
+    calendar: {
+      ...template.content.calendar,
+      title: invitation.eventTitle,
+      eventDate: datePart,
+      eventTime: timePart,
+    },
+    venue: {
+      ...template.content.venue,
+      name: invitation.venueName,
+      address: invitation.locationAddress,
+      yandexNavUrl: invitation.yandexUrl || template.content.venue.yandexNavUrl,
+    },
+    agenda: template.content.agenda
+      ? {
+          ...template.content.agenda,
+          items: invitation.agenda && invitation.agenda.length > 0 ? invitation.agenda : template.content.agenda.items,
+        }
+      : undefined,
+  } as const;
+
+  const { theme, resolvedMedia } = resolveWeddingTemplate({
+    templateId: invitation.templateId,
+    customData: { contentOverrides },
+    customStyles: invitation.customStyles,
+  });
 
   const isPending = invitation.status === 'PENDING';
   const canShare = invitation.status === 'ACTIVE';
@@ -93,8 +117,8 @@ export const InvitationCard: React.FC<InvitationCardProps> = ({
       )}
 
       <AudioPlayer
-        audioUrl={invitation.audioUrl || template.sampleMusicUrl}
-        audioTitle={invitation.audioTitle || template.sampleMusicTitle}
+        audioUrl={invitation.audioUrl || resolvedMedia.audioUrl}
+        audioTitle={invitation.audioTitle || resolvedMedia.audioTitle}
         autoPlay={envelopeOpened}
       />
 
@@ -120,66 +144,46 @@ export const InvitationCard: React.FC<InvitationCardProps> = ({
         </div>
       )}
 
-      <div className="relative z-20 max-w-xl mx-auto px-4 pt-12 sm:pt-16 pb-12 w-full">
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-          className="rounded-2xl border p-6 sm:p-10 text-center relative overflow-hidden"
-          style={{
-            backgroundColor: theme.cardBgColor,
-            color: theme.textColor,
-            borderColor: BRAND.borderAccent,
-            boxShadow: '0 20px 40px rgba(30, 41, 59, 0.04)',
-          }}
-        >
-          <InvitationFrame accentColor={theme.accentColor} />
-
-          <div
-            className="absolute top-0 inset-x-0 h-px z-10"
-            style={{ backgroundColor: BRAND.accent }}
-          />
-
-          <div className="absolute top-4 left-4 z-20">
-            <button
-              onClick={handleShareLink}
-              className="p-2 rounded-full border transition-colors cursor-pointer bg-white/80 relative"
-              style={{
-                borderColor: BRAND.border,
-                color: canShare ? BRAND.muted : BRAND.accent,
-                opacity: canShare ? 1 : 0.85,
-              }}
-              title={canShare ? 'Mehmon havolasini nusxalash' : 'Aktivlashdan keyin ochiladi'}
-            >
-              {copiedShare ? (
-                <CheckCircle2 className="w-4 h-4" style={{ color: BRAND.accent }} />
-              ) : canShare ? (
-                <Share2 className="w-4 h-4" />
-              ) : (
-                <Lock className="w-4 h-4" />
-              )}
-            </button>
-            {shareBlockedHint && (
-              <div
-                className="absolute left-0 top-11 w-48 text-[10px] leading-snug rounded-lg border px-2.5 py-2 bg-white shadow-sm"
-                style={{ borderColor: BRAND.borderAccent, color: BRAND.muted }}
-              >
-                Aktivlanmaguncha mehmon havolasini saqlab bo‘lmaydi
-              </div>
+      <div className="relative z-20 max-w-xl mx-auto px-3 sm:px-4 pt-10 sm:pt-14 pb-12 w-full">
+        <div className="relative mb-4 flex items-start justify-between gap-3">
+          <button
+            onClick={handleShareLink}
+            className="p-2 rounded-full border transition-colors cursor-pointer bg-white/80 relative shrink-0"
+            style={{
+              borderColor: BRAND.border,
+              color: canShare ? BRAND.muted : BRAND.accent,
+              opacity: canShare ? 1 : 0.85,
+            }}
+            title={canShare ? 'Mehmon havolasini nusxalash' : 'Aktivlashdan keyin ochiladi'}
+          >
+            {copiedShare ? (
+              <CheckCircle2 className="w-4 h-4" style={{ color: BRAND.accent }} />
+            ) : canShare ? (
+              <Share2 className="w-4 h-4" />
+            ) : (
+              <Lock className="w-4 h-4" />
             )}
-          </div>
+          </button>
+          {shareBlockedHint && (
+            <div
+              className="absolute left-0 top-11 w-48 text-[10px] leading-snug rounded-lg border px-2.5 py-2 bg-white shadow-sm z-30"
+              style={{ borderColor: BRAND.borderAccent, color: BRAND.muted }}
+            >
+              Aktivlanmaguncha mehmon havolasini saqlab bo‘lmaydi
+            </div>
+          )}
 
-          <div className="mb-4 pt-2 relative z-10">
+          <div className="flex-1 text-center pt-1">
             <motion.span
               initial={{ opacity: 0, y: 10, letterSpacing: '0.4em' }}
               animate={{ opacity: 1, y: 0, letterSpacing: '0.2em' }}
               transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
               className="inline-block px-3.5 py-1 rounded-full text-xs font-medium uppercase"
-              style={{ backgroundColor: `${BRAND.accent}15`, color: BRAND.accent }}
+              style={{ backgroundColor: `${theme.accentColor}15`, color: theme.accentColor }}
             >
               {roleParam ? `[${roleParam}]` : '— Taklifnoma —'}
             </motion.span>
-            <h2 className="mt-3 text-2xl sm:text-3xl font-serif px-2" style={{ color: BRAND.text }}>
+            <h2 className="mt-2 text-xl sm:text-2xl font-serif px-1" style={{ color: theme.textColor }}>
               <RevealWords
                 text={
                   guestName
@@ -192,123 +196,33 @@ export const InvitationCard: React.FC<InvitationCardProps> = ({
             </h2>
           </div>
 
-          <div className="relative z-10">
-            <LuxuryFloralCard
-              title={invitation.eventTitle}
-              groomName={invitation.groomName}
-              brideName={invitation.brideName}
-              eventDate={invitation.eventDate}
-              venueName={invitation.venueName}
-              accentColor={theme.accentColor}
-            />
+          <div className="w-9 shrink-0" aria-hidden />
+        </div>
+
+        {/* Template-specific layout architecture (WD-101 / WD-102 / WD-103) */}
+        <WeddingRenderer
+          templateId={invitation.templateId}
+          invitation={invitation}
+          customData={{ contentOverrides }}
+          customStyles={invitation.customStyles}
+          onRsvpSuccess={onStatusUpdated}
+        />
+
+        <div
+          className="mt-10 pt-6 border-t text-center space-y-2"
+          style={{ borderColor: BRAND.borderAccent }}
+        >
+          <div className="inline-flex items-center gap-2 text-sm font-serif" style={{ color: BRAND.text }}>
+            <Sparkles className="w-4 h-4" style={{ color: BRAND.accent }} />
+            <span>Onlayn Taklifnoma</span>
           </div>
-
-          <div className="my-4 relative z-10">
-            <motion.p
-              initial={{ opacity: 0, y: 8 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5 }}
-              className="text-xs uppercase tracking-widest"
-              style={{ color: theme.accentColor }}
-            >
-              <RevealLine delay={0.05}>{invitation.eventType}</RevealLine>
-            </motion.p>
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.55, delay: 0.1 }}
-            >
-              <OrnamentDivider className="w-32 h-auto mx-auto my-3" color={theme.accentColor} />
-            </motion.div>
-          </div>
-
-          <SoftSection className="max-w-md mx-auto" delay={0.05} enter="clip">
-            <RevealWords
-              text={`"Ikki ayro ko'ngil birlashgan ushbu muqaddas damlarda, muhabbat va sadoqat qasrini birga barpo etmoqdamiz. Sizning tashrifingiz va ezgu duolaringiz qalbimizga quvonch bag'ishlaydi."`}
-              className="italic text-sm sm:text-base leading-relaxed font-serif"
-              style={{ color: theme.textColor }}
-              delay={0.15}
-            />
-            <DrawLine color={theme.accentColor} className="mx-auto mt-4 w-10" delay={0.55} />
-          </SoftSection>
-
-          <div className="relative z-10 space-y-1">
-            <SoftSection className="my-4!" delay={0.04} enter="rise">
-              <CalendarGlowSync
-                eventDate={invitation.eventDate}
-                eventTitle={invitation.eventTitle}
-                venueName={invitation.venueName}
-                locationAddress={invitation.locationAddress}
-                accentColor={theme.accentColor}
-              />
-            </SoftSection>
-
-            <SoftSection className="my-4!" delay={0.06} enter="soft">
-              <UzbekCountdown
-                targetDate={invitation.eventDate}
-                primaryColor={BRAND.text}
-                accentColor={theme.accentColor}
-                cardBgColor="transparent"
-              />
-            </SoftSection>
-
-            <SoftSection className="my-4!" delay={0.06} enter="slideLeft">
-              <AgendaTimeline
-                agenda={invitation.agenda}
-                accentColor={theme.accentColor}
-                primaryColor={theme.primaryColor}
-                textColor={theme.textColor}
-              />
-            </SoftSection>
-
-            <SoftSection
-              className="my-4!"
-              delay={0.06}
-              enter="clip"
-              imageSrc={WEDDING_IMAGES.venue}
-              imageAlt="Marosim joyi"
-            >
-              <LocationNavigator
-                venueName={invitation.venueName}
-                locationAddress={invitation.locationAddress}
-                yandexUrl={invitation.yandexUrl}
-                googleUrl={invitation.googleUrl}
-                twoGisUrl={invitation.twoGisUrl}
-                accentColor={theme.accentColor}
-                textColor={theme.textColor}
-                cardBgColor="transparent"
-              />
-            </SoftSection>
-
-            <SoftSection className="my-4!" delay={0.08} enter="rise">
-              <RsvpSection
-                invitationId={invitation.id}
-                hostName={invitation.hostName}
-                eventTitle={invitation.eventTitle}
-                telegramChatId={invitation.telegramChatId}
-                onRsvpSuccess={onStatusUpdated}
-              />
-            </SoftSection>
-          </div>
-
-          <div
-            className="mt-12 pt-6 border-t text-center space-y-2 relative z-10"
-            style={{ borderColor: BRAND.borderAccent }}
-          >
-            <div className="inline-flex items-center gap-2 text-sm font-serif" style={{ color: BRAND.text }}>
-              <Sparkles className="w-4 h-4" style={{ color: BRAND.accent }} />
-              <span>Onlayn Taklifnoma</span>
-            </div>
-            <p className="text-[11px]" style={{ color: BRAND.muted }}>
-              Siz ham shunday taklifnoma yaratmoqchimisiz?{' '}
-              <a href="/" className="font-medium underline" style={{ color: BRAND.accent }}>
-                Bu yerga bosing
-              </a>
-            </p>
-          </div>
-        </motion.div>
+          <p className="text-[11px]" style={{ color: BRAND.muted }}>
+            Siz ham shunday taklifnoma yaratmoqchimisiz?{' '}
+            <a href="/" className="font-medium underline" style={{ color: BRAND.accent }}>
+              Bu yerga bosing
+            </a>
+          </p>
+        </div>
       </div>
 
       {isPending && (

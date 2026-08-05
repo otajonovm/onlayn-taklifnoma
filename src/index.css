@@ -60,3 +60,57 @@
   background-image: radial-gradient(rgba(212, 163, 115, 0.12) 0.5px, transparent 0.5px);
   background-size: 20px 20px;
 }
+
+/* Dynamic Style Wrapper — frame modifiers */
+.ds-root {
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.ds-frame-inner {
+  position: relative;
+  z-index: 1;
+}
+
+.ds-frame--classic_single {
+  border: 1px solid var(--border-color);
+  box-shadow: 0 12px 32px rgba(30, 41, 59, 0.04);
+}
+
+.ds-frame--double_fine {
+  border: 1px solid var(--border-color);
+  box-shadow: 0 12px 32px rgba(30, 41, 59, 0.04);
+  position: relative;
+}
+
+.ds-frame--double_fine > .ds-frame-inner::before {
+  content: '';
+  pointer-events: none;
+  position: absolute;
+  inset: 8px;
+  border: 1px dashed var(--border-color);
+  border-radius: calc(var(--border-radius) - 4px);
+  z-index: 2;
+  opacity: 0.7;
+}
+
+.ds-frame--glass_panel {
+  border: 1px solid var(--border-color);
+  background-color: color-mix(in srgb, var(--card-bg) 80%, transparent);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.06);
+}
+
+.ds-frame--borderless {
+  border: none;
+  box-shadow: 0 16px 40px rgba(30, 41, 59, 0.06);
+}
+
+.ds-font-header {
+  font-family: var(--font-header);
+}
+
+.ds-font-body {
+  font-family: var(--font-body);
+}

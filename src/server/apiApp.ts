@@ -1,7 +1,11 @@
 import express, { type Express, type Request, type Response, type NextFunction } from 'express';
 import crypto from 'crypto';
-import { TEMPLATES } from '../data/templates';
+import { WEDDING_TEMPLATES } from '../config/weddingTemplates';
 import type { Invitation, Rsvp } from '../types';
+import {
+  loadInvitationsFromDisk,
+  persistInvitationsToDisk,
+} from './invitationStore';
 
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'taklifnoma2026';
@@ -18,8 +22,14 @@ function store(): GlobalStore {
 
 function invitationsDb(): Map<string, Invitation> {
   const g = store();
-  if (!g.__otInvitations) g.__otInvitations = new Map();
+  if (!g.__otInvitations) {
+    g.__otInvitations = loadInvitationsFromDisk();
+  }
   return g.__otInvitations;
+}
+
+function saveInvitations(): void {
+  persistInvitationsToDisk(invitationsDb());
 }
 
 function adminTokens(): Set<string> {
@@ -34,9 +44,12 @@ function seedDemoData() {
   g.__otSeeded = true;
   const db = invitationsDb();
 
+  // Keep previously saved invitations; only seed when empty
+  if (db.size > 0) return;
+
   const sample1: Invitation = {
     id: 'OT-84920',
-    templateId: 'blooming_white_rose',
+    templateId: 'WD-101',
     status: 'PENDING',
     hostName: 'Alisher va Nigora',
     brideName: 'Nigora',
@@ -50,8 +63,8 @@ function seedDemoData() {
     googleUrl: 'https://maps.google.com/?q=Tashkent',
     twoGisUrl: 'https://2gis.uz/tashkent',
     audioUrl:
-      'https://cdn.pixabay.com/download/audio/2022/03/15/audio_10822601ff.mp3?filename=wedding-piano-10103.mp3',
-    audioTitle: 'Klassik Piano & Karnay Sadosi',
+      WEDDING_TEMPLATES['WD-101'].media.audioUrl,
+    audioTitle: WEDDING_TEMPLATES['WD-101'].media.audioTitle,
     telegramChatId: '@alisher_wedding_bot',
     agenda: [
       { time: '17:00', title: "Mehmonlarni Kutib Olish", description: 'Lobi zalida tantanali kutib olish va milliy musiqa', iconName: 'Users' },
@@ -79,7 +92,7 @@ function seedDemoData() {
 
   const sample2: Invitation = {
     id: 'OT-12945',
-    templateId: 'blooming_white_rose',
+    templateId: 'WD-102',
     status: 'ACTIVE',
     hostName: 'Sardor va Malika',
     brideName: 'Malika',
@@ -92,8 +105,8 @@ function seedDemoData() {
     yandexUrl: 'https://yandex.uz/maps',
     googleUrl: 'https://maps.google.com',
     audioUrl:
-      'https://cdn.pixabay.com/download/audio/2022/01/18/audio_d0a13f69d2.mp3?filename=romantic-love-story-14138.mp3',
-    audioTitle: 'Nafis Ishq Navosi',
+      WEDDING_TEMPLATES['WD-102'].media.audioUrl,
+    audioTitle: WEDDING_TEMPLATES['WD-102'].media.audioTitle,
     telegramChatId: '@sardor_wedding_bot',
     agenda: [
       { time: '17:00', title: "Mehmonlarni Kutib Olish", description: 'Tantanali kutib olish', iconName: 'Users' },
@@ -115,6 +128,7 @@ function seedDemoData() {
 
   db.set(sample1.id, sample1);
   db.set(sample2.id, sample2);
+  saveInvitations();
 }
 
 function extractBearer(req: Request): string | null {
@@ -139,10 +153,11 @@ export function createApiApp(): Express {
   seedDemoData();
 
   const app = express();
-  app.use(express.json());
+  // Base64 rasmlar uchun yetarli limit
+  app.use(express.json({ limit: '15mb' }));
 
   app.get('/api/templates', (_req, res) => {
-    res.json({ success: true, data: TEMPLATES });
+    res.json({ success: true, data: Object.values(WEDDING_TEMPLATES) });
   });
 
   app.post('/api/admin/login', (req, res) => {
@@ -207,9 +222,13 @@ export function createApiApp(): Express {
       const randomNum = Math.floor(10000 + Math.random() * 90000);
       const newId = `OT-${randomNum}`;
 
+      const requestedTemplateId = typeof body?.templateId === 'string' ? body.templateId : 'WD-101';
+      const safeTemplateId = WEDDING_TEMPLATES[requestedTemplateId] ? requestedTemplateId : 'WD-101';
+      const template = WEDDING_TEMPLATES[safeTemplateId];
+
       const newInvitation: Invitation = {
         id: newId,
-        templateId: body.templateId || 'blooming_white_rose',
+        templateId: safeTemplateId,
         status: 'PENDING',
         hostName: body.hostName || 'Mezbonlar',
         brideName: body.brideName || '',
@@ -223,18 +242,24 @@ export function createApiApp(): Express {
         googleUrl: body.googleUrl || 'https://maps.google.com',
         twoGisUrl: body.twoGisUrl || '',
         audioUrl:
-          body.audioUrl ||
-          'https://cdn.pixabay.com/download/audio/2022/03/15/audio_10822601ff.mp3?filename=wedding-piano-10103.mp3',
-        audioTitle: body.audioTitle || 'Fon Musiqasi',
+          body.audioUrl || template.media.audioUrl,
+        audioTitle: body.audioTitle || template.media.audioTitle,
         telegramChatId: body.telegramChatId || '@onlayntaklifnomaadmin',
         agenda: body.agenda || [],
         dressCode: body.dressCode || undefined,
+        customStyles:
+          body.customStyles && typeof body.customStyles === 'object'
+            ? body.customStyles
+            : undefined,
+        coverImage: typeof body.coverImage === 'string' ? body.coverImage : undefined,
+        venueImage: typeof body.venueImage === 'string' ? body.venueImage : undefined,
         rsvps: [],
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
 
       invitationsDb().set(newId, newInvitation);
+      saveInvitations();
       res.status(201).json({ success: true, data: newInvitation });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Server xatosi';
@@ -252,6 +277,7 @@ export function createApiApp(): Express {
     invitation.status = 'ACTIVE';
     invitation.updatedAt = new Date().toISOString();
     invitationsDb().set(id, invitation);
+    saveInvitations();
 
     res.json({
       success: true,
@@ -259,6 +285,61 @@ export function createApiApp(): Express {
       data: invitation,
       guestLink: `/v/${id}`,
     });
+  });
+
+  app.put('/api/invitations/:id', requireAdmin, (req, res) => {
+    try {
+      const id = req.params.id.toUpperCase();
+      const existing = invitationsDb().get(id);
+      if (!existing) {
+        return res.status(404).json({ success: false, message: 'Taklifnoma topilmadi' });
+      }
+
+      const body = req.body || {};
+      const next: Invitation = {
+        ...existing,
+        hostName: typeof body.hostName === 'string' ? body.hostName : existing.hostName,
+        brideName: typeof body.brideName === 'string' ? body.brideName : existing.brideName,
+        groomName: typeof body.groomName === 'string' ? body.groomName : existing.groomName,
+        eventTitle: typeof body.eventTitle === 'string' ? body.eventTitle : existing.eventTitle,
+        eventType: typeof body.eventType === 'string' ? body.eventType : existing.eventType,
+        eventDate: typeof body.eventDate === 'string' ? body.eventDate : existing.eventDate,
+        venueName: typeof body.venueName === 'string' ? body.venueName : existing.venueName,
+        locationAddress:
+          typeof body.locationAddress === 'string'
+            ? body.locationAddress
+            : existing.locationAddress,
+        yandexUrl: typeof body.yandexUrl === 'string' ? body.yandexUrl : existing.yandexUrl,
+        googleUrl: typeof body.googleUrl === 'string' ? body.googleUrl : existing.googleUrl,
+        twoGisUrl: typeof body.twoGisUrl === 'string' ? body.twoGisUrl : existing.twoGisUrl,
+        audioUrl: typeof body.audioUrl === 'string' ? body.audioUrl : existing.audioUrl,
+        audioTitle: typeof body.audioTitle === 'string' ? body.audioTitle : existing.audioTitle,
+        telegramChatId:
+          typeof body.telegramChatId === 'string'
+            ? body.telegramChatId
+            : existing.telegramChatId,
+        agenda: Array.isArray(body.agenda) ? body.agenda : existing.agenda,
+        dressCode: body.dressCode && typeof body.dressCode === 'object' ? body.dressCode : existing.dressCode,
+        customStyles:
+          body.customStyles && typeof body.customStyles === 'object'
+            ? body.customStyles
+            : existing.customStyles,
+        coverImage: typeof body.coverImage === 'string' ? body.coverImage : existing.coverImage,
+        venueImage: typeof body.venueImage === 'string' ? body.venueImage : existing.venueImage,
+        templateId:
+          typeof body.templateId === 'string' && WEDDING_TEMPLATES[body.templateId]
+            ? body.templateId
+            : existing.templateId,
+        updatedAt: new Date().toISOString(),
+      };
+
+      invitationsDb().set(id, next);
+      saveInvitations();
+      res.json({ success: true, data: next });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Server xatosi';
+      res.status(500).json({ success: false, error: message });
+    }
   });
 
   app.post('/api/invitations/:id/rsvp', (req, res) => {
@@ -292,6 +373,7 @@ export function createApiApp(): Express {
     if (!invitation.rsvps) invitation.rsvps = [];
     invitation.rsvps.push(newRsvp);
     invitationsDb().set(id, invitation);
+    saveInvitations();
 
     res.json({
       success: true,

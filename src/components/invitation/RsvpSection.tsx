@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { CheckCircle2, XCircle, Send, Sparkles, UserCheck } from 'lucide-react';
 import { BRAND } from '@/config/themes';
+import type { WeddingRsvpContent } from '@/config/weddingTemplates';
 import { triggerRsvpConfetti } from '@/utils/confetti';
 import { OrnamentDivider } from '@/components/ui/ornaments';
 
@@ -10,16 +11,33 @@ export interface RsvpSectionProps {
   hostName: string;
   eventTitle: string;
   telegramChatId?: string;
+  content?: WeddingRsvpContent;
+  accentColor?: string;
+  textColor?: string;
   onRsvpSuccess?: () => void;
 }
 
 export const RsvpSection: React.FC<RsvpSectionProps> = ({
   invitationId,
   hostName,
+  eventTitle,
+  telegramChatId,
+  content,
+  accentColor = BRAND.accent,
+  textColor = BRAND.text,
   onRsvpSuccess,
 }) => {
   const [guestName, setGuestName] = useState('');
-  const [role, setRole] = useState("Yaqin Do'st");
+  const rolesConfig =
+    content?.roles ?? [
+      { value: "Yaqin Do'st", label: "Yaqin Do'st" },
+      { value: 'Qarindosh', label: "Qarindosh / Oila" },
+      { value: 'Hamkasb', label: 'Hamkasb' },
+      { value: "Qo'shni", label: 'Qo\'shni' },
+      { value: 'Tantana sohibi', label: 'Tantana sohibiman' },
+    ];
+
+  const [role, setRole] = useState<string>(rolesConfig[0]?.value ?? "Yaqin Do'st");
   const [status, setStatus] = useState<'ATTENDING' | 'DECLINED'>('ATTENDING');
   const [plusOne, setPlusOne] = useState(1);
   const [wishes, setWishes] = useState('');
@@ -65,7 +83,7 @@ export const RsvpSection: React.FC<RsvpSectionProps> = ({
     'w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-1 bg-white';
   const fieldStyle = {
     borderColor: BRAND.border,
-    color: BRAND.text,
+    color: textColor,
   } as const;
 
   return (
@@ -74,14 +92,17 @@ export const RsvpSection: React.FC<RsvpSectionProps> = ({
     >
       <div className="text-center space-y-2 mb-6">
         <p className="text-xs uppercase tracking-widest font-medium" style={{ color: BRAND.accent }}>
-          — RSVP —
+          — {content?.badgeText ?? 'RSVP'} —
         </p>
-        <OrnamentDivider className="w-28 h-auto mx-auto" color={BRAND.accent} />
-        <h3 className="text-2xl font-serif" style={{ color: BRAND.text }}>
-          Tashrifingizni Bildiring
+        <OrnamentDivider className="w-28 h-auto mx-auto" color={accentColor} />
+        <h3 className="text-2xl font-serif" style={{ color: textColor }}>
+          {content?.sectionTitle ?? 'Tashrifingizni Bildiring'}
         </h3>
         <p className="text-xs max-w-xs mx-auto" style={{ color: BRAND.muted }}>
-          {hostName} sizni kutmoqda.
+          {(content?.sectionSubtitleTemplate ?? '${hostName} sizni kutmoqda.').replace(
+            '${hostName}',
+            hostName
+          )}
         </p>
       </div>
 
@@ -108,11 +129,15 @@ export const RsvpSection: React.FC<RsvpSectionProps> = ({
             >
               <CheckCircle2 className="w-9 h-9" />
             </motion.div>
-            <h4 className="text-2xl font-serif" style={{ color: BRAND.text }}>
-              Rahmat!
+            <h4 className="text-2xl font-serif" style={{ color: textColor }}>
+              {content?.successTitle ?? 'Rahmat!'}
             </h4>
             <p className="text-sm max-w-xs mx-auto leading-relaxed" style={{ color: BRAND.muted }}>
-              Tashrifingiz tasdiqlandi. Mezbonlar tez orada xabar olishadi.
+              {(content?.successSubtitleTemplate ??
+                'Tashrifingiz tasdiqlandi. Mezbonlar tez orada xabar olishadi.').replace(
+                '${hostName}',
+                hostName
+              )}
             </p>
             {responseLog && (
               <div
@@ -136,7 +161,7 @@ export const RsvpSection: React.FC<RsvpSectionProps> = ({
           >
             <div>
               <label className="block text-xs font-medium mb-1" style={{ color: BRAND.muted }}>
-                Ismingiz *
+                {content?.guestNameLabel ?? 'Ismingiz *'}
               </label>
               <input
                 type="text"
@@ -151,7 +176,7 @@ export const RsvpSection: React.FC<RsvpSectionProps> = ({
 
             <div>
               <label className="block text-xs font-medium mb-1" style={{ color: BRAND.muted }}>
-                Yaqinlik
+                {content?.proximityLabel ?? 'Yaqinlik'}
               </label>
               <select
                 value={role}
@@ -159,17 +184,17 @@ export const RsvpSection: React.FC<RsvpSectionProps> = ({
                 className={fieldClass}
                 style={fieldStyle}
               >
-                <option value="Yaqin Do'st">Yaqin Do'st</option>
-                <option value="Qarindosh">Qarindosh / Oila</option>
-                <option value="Hamkasb">Hamkasb</option>
-                <option value="Qo'shni">Qo'shni</option>
-                <option value="Tantana sohibi">Tantana sohibiman</option>
+                {rolesConfig.map((r) => (
+                  <option key={r.value} value={r.value}>
+                    {r.label}
+                  </option>
+                ))}
               </select>
             </div>
 
             <div>
               <label className="block text-xs font-medium mb-2" style={{ color: BRAND.muted }}>
-                Tashrif *
+                {content?.statusLabel ?? 'Tashrif *'}
               </label>
               <div className="grid grid-cols-2 gap-3">
                 <button
@@ -177,13 +202,13 @@ export const RsvpSection: React.FC<RsvpSectionProps> = ({
                   onClick={() => setStatus('ATTENDING')}
                   className="py-2.5 px-3 rounded-xl text-xs font-medium border flex items-center justify-center gap-2 cursor-pointer transition-all"
                   style={{
-                    backgroundColor: status === 'ATTENDING' ? BRAND.accent : BRAND.white,
-                    color: status === 'ATTENDING' ? BRAND.white : BRAND.text,
-                    borderColor: status === 'ATTENDING' ? BRAND.accent : BRAND.border,
+                    backgroundColor: status === 'ATTENDING' ? accentColor : BRAND.white,
+                    color: status === 'ATTENDING' ? BRAND.white : textColor,
+                    borderColor: status === 'ATTENDING' ? accentColor : BRAND.border,
                   }}
                 >
                   <UserCheck className="w-4 h-4" />
-                  Boraman
+                  {content?.status?.attendingLabel ?? 'Boraman'}
                 </button>
                 <button
                   type="button"
@@ -191,12 +216,12 @@ export const RsvpSection: React.FC<RsvpSectionProps> = ({
                   className="py-2.5 px-3 rounded-xl text-xs font-medium border flex items-center justify-center gap-2 cursor-pointer transition-all"
                   style={{
                     backgroundColor: status === 'DECLINED' ? '#FEF2F2' : BRAND.white,
-                    color: status === 'DECLINED' ? '#BE123C' : BRAND.text,
+                    color: status === 'DECLINED' ? '#BE123C' : textColor,
                     borderColor: status === 'DECLINED' ? '#FECACA' : BRAND.border,
                   }}
                 >
                   <XCircle className="w-4 h-4" />
-                  Bora olmayman
+                  {content?.status?.declinedLabel ?? 'Bora olmayman'}
                 </button>
               </div>
             </div>
@@ -204,7 +229,7 @@ export const RsvpSection: React.FC<RsvpSectionProps> = ({
             {status === 'ATTENDING' && (
               <div>
                 <label className="block text-xs font-medium mb-1" style={{ color: BRAND.muted }}>
-                  Necha kishi?
+                  {content?.plusOneLabel ?? 'Necha kishi?'}
                 </label>
                 <div className="flex items-center gap-2">
                   {[1, 2, 3, 4, 5].map((num) => (
@@ -228,7 +253,7 @@ export const RsvpSection: React.FC<RsvpSectionProps> = ({
 
             <div>
               <label className="block text-xs font-medium mb-1" style={{ color: BRAND.muted }}>
-                Tilaklar (ixtiyoriy)
+                {content?.wishesLabel ?? 'Tilaklar (ixtiyoriy)'}
               </label>
               <textarea
                 rows={2}
@@ -243,15 +268,15 @@ export const RsvpSection: React.FC<RsvpSectionProps> = ({
               type="submit"
               disabled={isSubmitting}
               className="w-full py-3.5 px-6 rounded-xl font-medium text-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-              style={{ backgroundColor: BRAND.accent, color: BRAND.white }}
+              style={{ backgroundColor: accentColor, color: BRAND.white }}
             >
               <Send className="w-4 h-4" />
               <span>
                 {isSubmitting
-                  ? 'Yuborilmoqda...'
+                  ? content?.submitButtonSubmittingLabel ?? 'Yuborilmoqda...'
                   : status === 'ATTENDING'
-                    ? 'Boraman — Tasdiqlash'
-                    : 'Javobni Yuborish'}
+                    ? content?.submitButtonAttendingLabel ?? 'Boraman — Tasdiqlash'
+                    : content?.submitButtonDeclinedLabel ?? 'Javobni Yuborish'}
               </span>
             </button>
           </motion.form>

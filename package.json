@@ -5,11 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
-    "build": "vite build",
+    "build": "vite build && npm run build:server",
+    "build:web": "vite build",
+    "build:server": "esbuild server.ts --bundle --platform=node --target=node20 --format=cjs --outfile=dist/server.cjs --packages=external",
     "start": "node dist/server.cjs",
-    "clean": "rm -rf dist server.cjs",
-    "lint": "tsc --noEmit",
-    "build:web": "vite build"
+    "clean": "rm -rf dist",
+    "lint": "tsc --noEmit"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

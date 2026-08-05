@@ -11,6 +11,13 @@ interface LocationNavigatorProps {
   accentColor?: string;
   textColor?: string;
   cardBgColor?: string;
+
+  sectionLabel?: string;
+  maps?: Array<{
+    key: 'yandex' | 'google' | 'twoGis';
+    label: string;
+    hint: string;
+  }>;
 }
 
 export const LocationNavigator: React.FC<LocationNavigatorProps> = ({
@@ -21,6 +28,8 @@ export const LocationNavigator: React.FC<LocationNavigatorProps> = ({
   twoGisUrl,
   accentColor = BRAND.accent,
   textColor = BRAND.text,
+  sectionLabel = 'Manzil va xarita',
+  maps: mapsProp,
 }) => {
   const queryText = encodeURIComponent(`${venueName} ${locationAddress}`);
 
@@ -47,32 +56,22 @@ export const LocationNavigator: React.FC<LocationNavigatorProps> = ({
     googleUrl || `https://www.google.com/maps/search/?api=1&query=${queryText}`;
   const finalTwoGisUrl = twoGisUrl || `https://2gis.uz/tashkent/search/${queryText}`;
 
-  const maps = [
-    {
-      key: 'yandex',
-      label: 'Yandex Maps',
-      hint: 'Navigator',
-      icon: Compass,
-      onClick: handleYandexClick,
-      href: undefined as string | undefined,
-    },
-    {
-      key: 'google',
-      label: 'Google Maps',
-      hint: 'Marshrut',
-      icon: Navigation,
-      onClick: undefined,
-      href: finalGoogleUrl,
-    },
-    {
-      key: '2gis',
-      label: '2GIS',
-      hint: 'Xarita',
-      icon: MapPin,
-      onClick: undefined,
-      href: finalTwoGisUrl,
-    },
-  ];
+  const maps =
+    (mapsProp && mapsProp.length > 0
+      ? mapsProp
+      : [
+          { key: 'yandex' as const, label: 'Yandex Maps', hint: 'Navigator' },
+          { key: 'google' as const, label: 'Google Maps', hint: 'Marshrut' },
+          { key: 'twoGis' as const, label: '2GIS', hint: 'Xarita' },
+        ]
+    ).map((m) => {
+      const icon = m.key === 'yandex' ? Compass : m.key === 'google' ? Navigation : MapPin;
+      const href =
+        m.key === 'google' ? finalGoogleUrl : m.key === 'twoGis' ? finalTwoGisUrl : undefined;
+      const onClick = m.key === 'yandex' ? handleYandexClick : undefined;
+
+      return { ...m, icon, href, onClick };
+    });
 
   const btnClass =
     'group flex flex-col items-center justify-center gap-1.5 py-4 px-3 rounded-2xl text-center transition-all duration-300 cursor-pointer active:scale-[0.98] hover:-translate-y-0.5';
@@ -103,7 +102,7 @@ export const LocationNavigator: React.FC<LocationNavigatorProps> = ({
           style={{ color: accentColor }}
         >
           <Globe className="w-3.5 h-3.5" />
-          Manzil va xarita
+          {sectionLabel}
         </p>
         <h3 className="text-xl sm:text-2xl font-serif px-1" style={{ color: textColor }}>
           {venueName}

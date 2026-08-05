@@ -9,9 +9,20 @@ export interface LuxuryFloralCardProps {
   title: string;
   groomName?: string;
   brideName?: string;
+  monogram?: string;
   eventDate: string;
   venueName: string;
   accentColor?: string;
+
+  // Config-driven typography
+  preambleText?: string;
+  primaryBodyTemplate?: string; // ${title} placeholder
+  secondaryBodyText?: string;
+  closingLineText?: string;
+  coverImage?: string;
+
+  textColor?: string;
+  secondaryTextColor?: string;
 }
 
 const MiniCorner: React.FC<{
@@ -45,8 +56,18 @@ export const LuxuryFloralCard: React.FC<LuxuryFloralCardProps> = ({
   title,
   groomName,
   brideName,
+  monogram,
   accentColor = BRAND.accent,
+  preambleText = 'Hurmat bilan taklif etamiz',
+  primaryBodyTemplate = 'Bizning hayotimizdagi eng baxtli kun — ${title} ga sizni mehmon qilib taklif etamiz.',
+  secondaryBodyText = 'Sizning ishtirokingiz, ezgu tilaklaringiz va duolaringiz biz uchun beqiyos qadrli. Shu quvonchini birga nishonlashni istaymiz.',
+  closingLineText = "Kutib olishimizdan mamnun bo‘lamiz",
+  coverImage = WEDDING_IMAGES.ringsClose,
+  textColor = BRAND.text,
+  secondaryTextColor = BRAND.muted,
 }) => {
+  const primaryParts = primaryBodyTemplate.split('${title}');
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 28, scale: 0.96 }}
@@ -71,7 +92,7 @@ export const LuxuryFloralCard: React.FC<LuxuryFloralCardProps> = ({
         style={{ borderColor: 'rgba(212, 163, 115, 0.35)' }}
       >
         <img
-          src={WEDDING_IMAGES.ringsClose}
+          src={coverImage}
           alt="Nikoh uzuklari"
           className="w-full h-full object-cover"
           loading="eager"
@@ -87,6 +108,17 @@ export const LuxuryFloralCard: React.FC<LuxuryFloralCardProps> = ({
       </motion.div>
 
       <div className="relative z-2 px-5 sm:px-8 pt-5 pb-10 text-center">
+        {monogram && (
+          <motion.p
+            initial={{ opacity: 0, letterSpacing: '0.4em' }}
+            animate={{ opacity: 1, letterSpacing: '0.22em' }}
+            transition={{ duration: 0.7, delay: 0.1, ease: EASE }}
+            className="text-[10px] uppercase tracking-[0.25em] font-medium mb-2"
+            style={{ color: accentColor }}
+          >
+            {monogram}
+          </motion.p>
+        )}
         <motion.p
           initial={{ opacity: 0, letterSpacing: '0.35em' }}
           animate={{ opacity: 1, letterSpacing: '0.22em' }}
@@ -94,7 +126,7 @@ export const LuxuryFloralCard: React.FC<LuxuryFloralCardProps> = ({
           className="text-[10px] uppercase font-medium mb-4"
           style={{ color: accentColor }}
         >
-          Hurmat bilan taklif etamiz
+          {preambleText}
         </motion.p>
 
         {/* Couple names — focal */}
@@ -138,13 +170,18 @@ export const LuxuryFloralCard: React.FC<LuxuryFloralCardProps> = ({
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.55, ease: EASE }}
           className="mt-5 text-sm sm:text-[15px] leading-relaxed font-serif px-1"
-          style={{ color: BRAND.text }}
+          style={{ color: textColor }}
         >
-          Bizning hayotimizdagi eng baxtli kun —{' '}
-          <span className="italic" style={{ color: accentColor }}>
-            {title}
-          </span>
-          ga sizni mehmon qilib taklif etamiz.
+          {primaryParts.map((part, idx) => (
+            <React.Fragment key={idx}>
+              {part}
+              {idx < primaryParts.length - 1 && (
+                <span className="italic" style={{ color: accentColor }}>
+                  {title}
+                </span>
+              )}
+            </React.Fragment>
+          ))}
         </motion.p>
 
         <motion.p
@@ -152,10 +189,9 @@ export const LuxuryFloralCard: React.FC<LuxuryFloralCardProps> = ({
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.55, delay: 0.7, ease: EASE }}
           className="mt-3 text-xs sm:text-sm leading-relaxed px-2"
-          style={{ color: BRAND.muted }}
+          style={{ color: secondaryTextColor }}
         >
-          Sizning ishtirokingiz, ezgu tilaklaringiz va duolaringiz biz uchun
-          beqiyos qadrli. Shu quvonchini birga nishonlashni istaymiz.
+          {secondaryBodyText}
         </motion.p>
 
         <motion.p
@@ -163,9 +199,9 @@ export const LuxuryFloralCard: React.FC<LuxuryFloralCardProps> = ({
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.9 }}
           className="mt-6 text-[11px] italic"
-          style={{ color: BRAND.muted }}
+          style={{ color: secondaryTextColor }}
         >
-          Kutib olishimizdan mamnun bo‘lamiz
+          {closingLineText}
         </motion.p>
       </div>
     </motion.div>
