@@ -2,13 +2,20 @@ import fs from 'fs';
 import path from 'path';
 import type { Invitation } from '../types';
 
-const DATA_DIR = path.join(process.cwd(), 'data');
+const DATA_DIR = process.env.DATA_DIR
+  ? path.resolve(process.env.DATA_DIR)
+  : path.join(process.cwd(), 'data');
 const DATA_FILE = path.join(DATA_DIR, 'invitations.json');
 
 function canPersistToDisk(): boolean {
   // Vercel serverless filesystem is ephemeral / often read-only outside /tmp
   if (process.env.VERCEL) return false;
   return true;
+}
+
+export function describePersistence(): string {
+  if (!canPersistToDisk()) return 'memory (serverless)';
+  return `disk: ${DATA_FILE}`;
 }
 
 export function loadInvitationsFromDisk(): Map<string, Invitation> {

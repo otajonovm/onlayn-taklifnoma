@@ -5,6 +5,7 @@ import type { Invitation, Rsvp } from '../types';
 import {
   loadInvitationsFromDisk,
   persistInvitationsToDisk,
+  describePersistence,
 } from './invitationStore';
 
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
@@ -155,6 +156,15 @@ export function createApiApp(): Express {
   const app = express();
   // Base64 rasmlar uchun yetarli limit
   app.use(express.json({ limit: '15mb' }));
+
+  app.get('/api/health', (_req, res) => {
+    res.json({
+      success: true,
+      invitations: invitationsDb().size,
+      persistence: describePersistence(),
+      uptimeSeconds: Math.round(process.uptime()),
+    });
+  });
 
   app.get('/api/templates', (_req, res) => {
     res.json({ success: true, data: Object.values(WEDDING_TEMPLATES) });
@@ -399,6 +409,25 @@ export function createApiApp(): Express {
       },
     });
   });
+
+  // Always answer /api/* with JSON so the client never has to parse an HTML error page
+  app.use('/api', (_req, res) => {
+    res.status(404).json({ success: false, message: 'API yo‘li topilmadi' });
+  });
+
+  app.use(
+    '/api',
+    (err: Error & { status?: number; type?: string }, _req: Request, res: Response, _next: NextFunction) => {
+      const status = err.status && err.status >= 400 ? err.status : 500;
+      const message =
+        err.type === 'entity.too.large'
+          ? 'Yuborilgan ma’lumot juda katta. Rasmni kichikroq qiling.'
+          : err.message || 'Server xatosi';
+
+      console.error('[api]', status, message);
+      res.status(status).json({ success: false, message });
+    }
+  );
 
   return app;
 }

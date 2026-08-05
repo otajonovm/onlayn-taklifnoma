@@ -328,7 +328,9 @@ export const LiveBuilder: React.FC<LiveBuilderProps> = ({
         data = text ? JSON.parse(text) : {};
       } catch {
         throw new Error(
-          'Server API ishlamayapti. Vercel’da qayta deploy qiling yoki /api yo‘lini tekshiring.'
+          res.status === 413
+            ? 'Rasm juda katta. Kichikroq rasm tanlang.'
+            : `Server javob bermadi (HTTP ${res.status}). Birozdan keyin qayta urinib ko‘ring.`
         );
       }
 
