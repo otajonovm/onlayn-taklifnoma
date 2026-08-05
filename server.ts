@@ -3,6 +3,7 @@ import http from 'http';
 import path from 'path';
 import { config as loadEnv } from 'dotenv';
 import { createApiApp } from './src/server/apiApp';
+import { describePersistence } from './src/server/invitationStore';
 
 loadEnv({ path: '.env.local' });
 loadEnv();
@@ -39,12 +40,19 @@ async function startServer() {
     console.log(
       `[Onlayn Taklifnoma] ${isProduction ? 'production' : 'development'} on http://0.0.0.0:${PORT}`
     );
+    console.log(`[Storage] ${describePersistence()}`);
     console.log(`[Admin] login: ${ADMIN_USERNAME} (parol .env da)`);
   });
 }
 
+// Keep the process alive on unexpected errors; a crash turns every in-flight
+// request into an opaque platform 500 page.
 process.on('unhandledRejection', (err) => {
   console.error('[unhandledRejection]', err);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('[uncaughtException]', err);
 });
 
 startServer().catch((err) => {

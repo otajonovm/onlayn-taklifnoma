@@ -424,7 +424,7 @@ export function createApiApp(): Express {
           ? 'Yuborilgan ma’lumot juda katta. Rasmni kichikroq qiling.'
           : err.message || 'Server xatosi';
 
-      console.error('[api]', status, message);
+      console.error('[api error]', status, err.stack || message);
       res.status(status).json({ success: false, message });
     }
   );
