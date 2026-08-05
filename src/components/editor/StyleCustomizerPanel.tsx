@@ -122,7 +122,9 @@ function FramePreview({
 }
 
 const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
-const MAX_IMAGE_EDGE = 1600;
+const MAX_IMAGE_EDGE = 1200;
+/** Keep each data-URL under ~450KB so DO/Cloudflare body limits are not hit */
+const MAX_DATA_URL_CHARS = 450_000;
 
 /** Downscale to JPEG so drafts fit in localStorage and API payloads stay small. */
 function compressImage(file: File): Promise<string> {
@@ -134,18 +136,29 @@ function compressImage(file: File): Promise<string> {
       const img = new Image();
       img.onerror = () => reject(new Error('Rasm formati qo‘llab-quvvatlanmaydi'));
       img.onload = () => {
-        const scale = Math.min(1, MAX_IMAGE_EDGE / Math.max(img.width, img.height));
-        const canvas = document.createElement('canvas');
-        canvas.width = Math.round(img.width * scale);
-        canvas.height = Math.round(img.height * scale);
-
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          resolve(src);
-          return;
-        }
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL('image/jpeg', 0.82));
+        let edge = MAX_IMAGE_EDGE;
+        let quality = 0.78;
+        const attempt = () => {
+          const scale = Math.min(1, edge / Math.max(img.width, img.height));
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.max(1, Math.round(img.width * scale));
+          canvas.height = Math.max(1, Math.round(img.height * scale));
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            resolve(src);
+            return;
+          }
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          const out = canvas.toDataURL('image/jpeg', quality);
+          if (out.length > MAX_DATA_URL_CHARS && (edge > 640 || quality > 0.5)) {
+            edge = Math.round(edge * 0.8);
+            quality = Math.max(0.45, quality - 0.1);
+            attempt();
+            return;
+          }
+          resolve(out);
+        };
+        attempt();
       };
       img.src = src;
     };

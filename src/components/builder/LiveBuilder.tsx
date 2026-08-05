@@ -289,6 +289,25 @@ export const LiveBuilder: React.FC<LiveBuilderProps> = ({
     setIsSubmitting(true);
 
     try {
+      // Oversized data-URLs break Cloudflare/DO body limits and return HTML 413/502
+      const MAX_INLINE = 450_000;
+      const safeCover =
+        images.coverImage?.startsWith('data:') && images.coverImage.length > MAX_INLINE
+          ? ''
+          : images.coverImage;
+      const safeVenue =
+        images.venueImage?.startsWith('data:') && images.venueImage.length > MAX_INLINE
+          ? ''
+          : images.venueImage;
+      if (
+        (images.coverImage?.startsWith('data:') && images.coverImage.length > MAX_INLINE) ||
+        (images.venueImage?.startsWith('data:') && images.venueImage.length > MAX_INLINE)
+      ) {
+        throw new Error(
+          'Yuklangan rasm juda katta. Galereyadan shablon rasm tanlang yoki kichikroq fayl yuklang.'
+        );
+      }
+
       const payload = {
         templateId: selectedTemplateId,
         hostName: `${groomName} va ${brideName}`,
@@ -312,8 +331,8 @@ export const LiveBuilder: React.FC<LiveBuilderProps> = ({
           colors: dressCodeColors,
         },
         customStyles: styleOverrides,
-        coverImage: images.coverImage,
-        venueImage: images.venueImage,
+        coverImage: safeCover || undefined,
+        venueImage: safeVenue || undefined,
       };
 
       const res = await fetch('/api/invitations', {
@@ -328,11 +347,11 @@ export const LiveBuilder: React.FC<LiveBuilderProps> = ({
         data = text ? JSON.parse(text) : {};
       } catch {
         throw new Error(
-          res.status === 413
-            ? 'Rasm juda katta. Kichikroq rasm tanlang.'
+          res.status === 413 || res.status === 502
+            ? 'Rasm/so‘rov juda katta. Shablon rasmlardan foydalaning.'
             : res.status === 404
-              ? 'API topilmadi (404). Deploy da /api yo‘li ulanganini tekshiring.'
-              : `Server javob bermadi (HTTP ${res.status}). Birozdan keyin qayta urinib ko‘ring.`
+              ? 'API topilmadi (404). DigitalOcean URL dan foydalanayotganingizni tekshiring.'
+              : `Server javob bermadi (HTTP ${res.status}).`
         );
       }
 
