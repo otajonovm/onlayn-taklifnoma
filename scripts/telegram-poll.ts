@@ -68,7 +68,10 @@ async function main() {
   for (;;) {
     try {
       const data = await tg<{
-        result: Array<{ update_id: number } & Record<string, unknown>>;
+        result: Array<{
+          update_id: number;
+          message?: { text?: string };
+        }>;
       }>('getUpdates', {
         offset,
         timeout: 25,
@@ -77,10 +80,7 @@ async function main() {
 
       for (const update of data.result || []) {
         offset = update.update_id + 1;
-        const text =
-          typeof (update as { message?: { text?: string } }).message?.text === 'string'
-            ? (update as { message: { text: string } }).message.text
-            : '';
+        const text = typeof update.message?.text === 'string' ? update.message.text : '';
         console.log(`← update #${update.update_id}${text ? `: ${text}` : ''}`);
         try {
           await forwardUpdate(update);
