@@ -20,9 +20,36 @@ export function getBotUsername(): string {
   );
 }
 
+/** Env qiymatidan toza URL chiqaradi (noto‘g‘ri qo‘shilgan APP_URL= / qo‘shtirnoqlarni tozalaydi). */
+function sanitizeAppUrl(raw?: string | null): string | undefined {
+  if (!raw) return undefined;
+  let v = raw.trim();
+  // ""APP_URL=https://..." yoki "APP_URL=https://..." kabi xatolarni tuzatish
+  v = v.replace(/^["']+|["']+$/g, '');
+  v = v.replace(/^APP_URL\s*=\s*/i, '');
+  v = v.replace(/^["']+|["']+$/g, '');
+  const httpsMatch = v.match(/https?:\/\/[^\s"'\\]+/i);
+  if (httpsMatch) v = httpsMatch[0];
+  v = v.replace(/\/$/, '');
+  if (!/^https?:\/\//i.test(v)) return undefined;
+  return v;
+}
+
 export function publicAppBaseUrl(): string {
-  const raw = process.env.APP_URL?.trim() || 'https://onlayntaklifnoma.uz';
-  return raw.replace(/\/$/, '');
+  const candidates = [
+    process.env.APP_URL,
+    process.env.PUBLIC_APP_URL,
+    process.env.DIGITALOCEAN_APP_URL,
+  ];
+  for (const raw of candidates) {
+    const v = sanitizeAppUrl(raw);
+    if (!v) continue;
+    // Production’da localhost webhook ishlamaydi — o‘tkazib yuboramiz
+    if (/localhost|127\.0\.0\.1/i.test(v)) continue;
+    return v;
+  }
+  const fallback = sanitizeAppUrl(process.env.APP_URL) || 'http://localhost:3000';
+  return fallback;
 }
 
 export function guestPublicUrl(invitationId: string): string {
@@ -125,7 +152,12 @@ export async function ensureTelegramWebhook(): Promise<void> {
     return;
   }
   if (!/^https:\/\//i.test(base) || /localhost|127\.0\.0\.1/i.test(base)) {
-    console.log(`[telegram] APP_URL lokal (${base}) — webhook o‘rnatilmaydi (npm run bot ishlating)`);
+    console.error(
+      `[telegram] WEBHOOK O‘RNATILMADI — APP_URL noto‘g‘ri: ${base}\n` +
+        `  DigitalOcean → Settings → Env Variables ga qo‘ying:\n` +
+        `  APP_URL=https://SIZNING-APP.ondigitalocean.app\n` +
+        `  (localhost emas, https bilan). Keyin Redeploy qiling.`
+    );
     return;
   }
 
