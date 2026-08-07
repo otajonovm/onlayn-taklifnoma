@@ -25,3 +25,15 @@ export function adminAuthHeaders(): HeadersInit {
 export function guestShareUrl(invitationId: string, origin = window.location.origin): string {
   return `${origin}/v/${invitationId}`;
 }
+
+/** Deep-link so host can /start and link their Telegram chat */
+export function botStartUrl(invitationId: string, botUsername: string): string {
+  const user = botUsername.replace(/^@/, '') || 'onlayntaklifnomabot';
+  return `https://t.me/${user}?start=${invitationId}`;
+}
+
+/** Host linked bot if telegramChatId is a numeric chat id */
+export function isTelegramLinked(chatId?: string | null): boolean {
+  if (!chatId) return false;
+  return /^-?\d+$/.test(chatId.trim());
+}

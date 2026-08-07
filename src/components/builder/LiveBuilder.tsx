@@ -16,12 +16,15 @@ import {
 import { DEFAULT_AUDIO_TRACK } from '@/data/audioTracks';
 import { StyleCustomizerPanel } from '@/components/editor/StyleCustomizerPanel';
 import { AudioTrackPicker } from '@/components/editor/AudioTrackPicker';
+import { TemplatePreviewThumb } from '@/components/builder/TemplatePreviewThumb';
 import { WeddingRenderer } from '@/components/templates/WeddingRenderer';
 import { Plus, Trash2, CheckCircle2, Eye, ArrowLeft, Sparkles } from 'lucide-react';
 
 interface LiveBuilderProps {
   onInvitationCreated: (id: string) => void;
   onCancel?: () => void;
+  /** Prefill from home “Andoza” selection, e.g. WD-102 */
+  initialTemplateId?: string;
 }
 
 function getInitialDraft() {
@@ -32,13 +35,21 @@ function getInitialDraft() {
 export const LiveBuilder: React.FC<LiveBuilderProps> = ({
   onInvitationCreated,
   onCancel,
+  initialTemplateId,
 }) => {
   const templateIds = Object.keys(WEDDING_TEMPLATES);
-  const initialDraft = useMemo(() => getInitialDraft(), []);
+  // Home andozadan kelganda draftni e’tiborsiz qoldiramiz — tanlangan shablon ochiladi
+  const initialDraft = useMemo(() => {
+    if (initialTemplateId && WEDDING_TEMPLATES[initialTemplateId]) return null;
+    return getInitialDraft();
+  }, [initialTemplateId]);
 
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string>(
-    () => initialDraft?.selectedTemplateId || templateIds[0]
-  );
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>(() => {
+    if (initialTemplateId && WEDDING_TEMPLATES[initialTemplateId]) {
+      return initialTemplateId;
+    }
+    return initialDraft?.selectedTemplateId || templateIds[0];
+  });
 
   const [brideName, setBrideName] = useState(initialDraft?.brideName ?? 'Nigora');
   const [groomName, setGroomName] = useState(initialDraft?.groomName ?? 'Alisher');
@@ -212,10 +223,6 @@ export const LiveBuilder: React.FC<LiveBuilderProps> = ({
 
   const handleStyleChange = (partial: Partial<TemplateStyleOverrides>) => {
     setStyleOverrides((prev) => mergeStyleOverrides(prev, partial));
-  };
-
-  const handleImagesChange = (partial: Partial<InvitationImages>) => {
-    setImages((prev) => ({ ...prev, ...partial }));
   };
 
   const draftInvitation: Invitation = useMemo(
@@ -423,18 +430,21 @@ export const LiveBuilder: React.FC<LiveBuilderProps> = ({
                 {templateIds.map((id) => {
                   const t = WEDDING_TEMPLATES[id];
                   if (!t) return null;
+                  const active = selectedTemplateId === t.id;
                   return (
-                    <div
+                    <button
                       key={t.id}
+                      type="button"
                       onClick={() => setSelectedTemplateId(t.id)}
-                      className="p-3 rounded-xl border cursor-pointer relative transition-all bg-white hover:shadow-sm"
+                      className="rounded-xl border cursor-pointer relative transition-all bg-white text-left hover:shadow-md overflow-hidden"
                       style={{
-                        borderColor: selectedTemplateId === t.id ? BRAND.accent : BRAND.border,
-                        boxShadow:
-                          selectedTemplateId === t.id ? `0 0 0 1px ${BRAND.accent}` : undefined,
+                        borderColor: active ? BRAND.accent : BRAND.border,
+                        boxShadow: active
+                          ? `0 0 0 1px ${BRAND.accent}, 0 12px 28px rgba(30,41,59,0.08)`
+                          : '0 8px 20px rgba(30,41,59,0.04)',
                       }}
                     >
-                      {selectedTemplateId === t.id && (
+                      {active && (
                         <div
                           className="absolute top-2 right-2 z-10 w-6 h-6 rounded-full flex items-center justify-center"
                           style={{ backgroundColor: BRAND.accent, color: BRAND.white }}
@@ -442,18 +452,20 @@ export const LiveBuilder: React.FC<LiveBuilderProps> = ({
                           <CheckCircle2 className="w-4 h-4" />
                         </div>
                       )}
-                      <img
-                        src={t.thumbnail}
-                        alt={t.name}
-                        className="w-full h-24 object-cover rounded-lg mb-2"
+                      <TemplatePreviewThumb
+                        template={t}
+                        groomName={groomName}
+                        brideName={brideName}
                       />
-                      <h3 className="font-serif text-sm" style={{ color: BRAND.text }}>
-                        {t.name}
-                      </h3>
-                      <p className="text-[10px] mt-0.5" style={{ color: BRAND.muted }}>
-                        {t.id}
-                      </p>
-                    </div>
+                      <div className="px-2.5 py-2">
+                        <h3 className="font-serif text-sm" style={{ color: BRAND.text }}>
+                          {t.name}
+                        </h3>
+                        <p className="text-[10px]" style={{ color: BRAND.muted }}>
+                          {t.id}
+                        </p>
+                      </div>
+                    </button>
                   );
                 })}
               </div>
@@ -654,8 +666,6 @@ export const LiveBuilder: React.FC<LiveBuilderProps> = ({
                 <StyleCustomizerPanel
                   styles={styleOverrides}
                   onStyleChange={handleStyleChange}
-                  images={images}
-                  onImagesChange={handleImagesChange}
                 />
               </div>
 

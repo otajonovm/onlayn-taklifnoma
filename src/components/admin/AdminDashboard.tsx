@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Invitation } from '../../types';
-import { BRAND } from '../../config/themes';
 import { AdminLogin } from './AdminLogin';
 import {
   adminAuthHeaders,
+  botStartUrl,
   clearAdminToken,
   getAdminToken,
   guestShareUrl,
+  isTelegramLinked,
   setAdminToken,
 } from '../../lib/adminAuth';
 import {
@@ -21,8 +22,20 @@ import {
   Copy,
   Search,
   LogOut,
-  Lock,
+  Zap,
+  Link2,
+  Link2Off,
 } from 'lucide-react';
+
+const ADMIN_UI = {
+  emerald: '#0F5132',
+  gold: '#D4AF37',
+  cream: '#FDFBF7',
+  ivory: '#FAFAFA',
+  charcoal: '#1A1A1A',
+  muted: '#64748B',
+  border: 'rgba(212, 175, 55, 0.35)',
+} as const;
 
 interface AdminDashboardProps {
   onSelectInvitation: (id: string) => void;
@@ -40,14 +53,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     pendingInvitations: 0,
     activeInvitations: 0,
     totalRsvps: 0,
+    telegramLinked: 0,
   });
+  const [botUsername, setBotUsername] = useState('OnlaynTaklifnomaBot');
+  const [telegramConfigured, setTelegramConfigured] = useState(false);
   const [filter, setFilter] = useState<'ALL' | 'PENDING' | 'ACTIVE'>('ALL');
   const [search, setSearch] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [testGuestName] = useState('Sardor Azimov');
+  const [activatingId, setActivatingId] = useState<string | null>(null);
   const [commandInput, setCommandInput] = useState('/activate OT-84920');
   const [commandResult, setCommandResult] = useState<string | null>(null);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   const fetchData = async () => {
     if (!getAdminToken()) return;
@@ -68,7 +84,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       const invData = await invRes.json();
       const statsData = await statsRes.json();
       if (invData.success) setInvitations(invData.data);
-      if (statsData.success) setStats(statsData.stats);
+      if (statsData.success) {
+        setStats({
+          totalInvitations: statsData.stats.totalInvitations ?? 0,
+          pendingInvitations: statsData.stats.pendingInvitations ?? 0,
+          activeInvitations: statsData.stats.activeInvitations ?? 0,
+          totalRsvps: statsData.stats.totalRsvps ?? 0,
+          telegramLinked: statsData.stats.telegramLinked ?? 0,
+        });
+        if (typeof statsData.botUsername === 'string') {
+          setBotUsername(statsData.botUsername);
+        }
+        setTelegramConfigured(Boolean(statsData.telegramConfigured));
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -78,7 +106,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   useEffect(() => {
     if (!token) return;
-    // Validate session
     fetch('/api/admin/me', { headers: adminAuthHeaders() })
       .then(async (res) => {
         if (!res.ok) {
@@ -86,6 +113,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           setToken(null);
           return;
         }
+        const me = await res.json();
+        if (typeof me.botUsername === 'string') setBotUsername(me.botUsername);
+        setTelegramConfigured(Boolean(me.telegramConfigured));
         fetchData();
       })
       .catch(() => {
@@ -113,10 +143,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   };
 
   const handleActivate = async (id: string) => {
+    setActivatingId(id);
     try {
-      const res = await fetch(`/api/invitations/${id}/activate`, {
+      const res = await fetch('/api/admin/activate', {
         method: 'POST',
-        headers: adminAuthHeaders(),
+        headers: {
+          ...adminAuthHeaders(),
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ invitationId: id }),
       });
       const data = await res.json();
       if (res.status === 401) {
@@ -125,272 +160,421 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         return;
       }
       if (data.success) {
+        const tgNote =
+          data.telegram?.ok
+            ? 'Telegram admin xabari yuborildi.'
+            : data.telegram?.skipped
+              ? `Telegram: ${data.telegram.reason || 'o‘tkazib yuborildi'}`
+              : `Telegram: ${data.telegram?.description || data.telegram?.reason || 'xato'}`;
         setCommandResult(
-          `✅ #${id} aktiv. Mehmon havolasi: ${guestShareUrl(id)}`
+          `✅ #${id} faollashtirildi.\n` +
+            `Mehmon: ${guestShareUrl(id)}\n` +
+            `Bot: ${data.botLink || botStartUrl(id, botUsername)}\n` +
+            tgNote
         );
         fetchData();
+      } else {
+        setCommandResult(`❌ ${data.message || 'Faollashtirish muvaffaqiyatsiz'}`);
       }
     } catch (err) {
       console.error(err);
+      setCommandResult('❌ Tarmoq xatosi');
+    } finally {
+      setActivatingId(null);
     }
   };
 
   const handleRunBotCommand = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!commandInput.trim()) return;
-    const parts = commandInput.trim().split(' ');
+    const parts = commandInput.trim().split(/\s+/);
     if (parts[0].toLowerCase() === '/activate' && parts[1]) {
-      const idToActivate = parts[1].replace('#', '').toUpperCase();
-      await handleActivate(idToActivate);
+      await handleActivate(parts[1].replace('#', '').toUpperCase());
     } else {
       setCommandResult('❌ Buyruq xato. Misol: /activate OT-84920');
     }
   };
 
-  const copyGuestLink = (id: string) => {
-    const url = guestShareUrl(id);
-    navigator.clipboard.writeText(url);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
+  const copyText = async (key: string, text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedKey(key);
+      setTimeout(() => setCopiedKey(null), 2000);
+    } catch {
+      setCommandResult('❌ Nusxa olish muvaffaqiyatsiz');
+    }
   };
 
   if (!token) {
     return <AdminLogin onSuccess={handleLoginSuccess} onBackToHome={onBackToHome} />;
   }
 
-  const filtered = invitations.filter((inv) => {
-    const matchesFilter =
-      filter === 'ALL' ? true : filter === 'PENDING' ? inv.status === 'PENDING' : inv.status === 'ACTIVE';
-    const matchesSearch =
-      inv.id.toLowerCase().includes(search.toLowerCase()) ||
-      inv.hostName.toLowerCase().includes(search.toLowerCase()) ||
-      inv.eventTitle.toLowerCase().includes(search.toLowerCase());
-    return matchesFilter && matchesSearch;
-  });
+  const filtered = invitations
+    .filter((inv) => {
+      const matchesFilter =
+        filter === 'ALL'
+          ? true
+          : filter === 'PENDING'
+            ? inv.status === 'PENDING'
+            : inv.status === 'ACTIVE';
+      const q = search.toLowerCase();
+      const matchesSearch =
+        inv.id.toLowerCase().includes(q) ||
+        inv.hostName.toLowerCase().includes(q) ||
+        inv.eventTitle.toLowerCase().includes(q);
+      return matchesFilter && matchesSearch;
+    })
+    .sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt));
 
   return (
-    <div className="min-h-screen p-4 sm:p-8" style={{ backgroundColor: BRAND.bg, color: BRAND.text }}>
-      <div className="max-w-6xl mx-auto space-y-8">
+    <div
+      className="min-h-screen p-4 sm:p-8"
+      style={{
+        backgroundColor: ADMIN_UI.cream,
+        color: ADMIN_UI.charcoal,
+        fontFamily: "'Plus Jakarta Sans', sans-serif",
+      }}
+    >
+      <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden>
+        <div className="absolute -top-20 -right-16 w-72 h-72 rounded-full bg-[#D4AF37]/10 blur-[100px]" />
+        <div className="absolute bottom-0 -left-10 w-80 h-80 rounded-full bg-[#0F5132]/10 blur-[110px]" />
+      </div>
+
+      <div className="relative max-w-6xl mx-auto space-y-8">
         <div
           className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-6"
-          style={{ borderColor: BRAND.border }}
+          style={{ borderColor: ADMIN_UI.border }}
         >
           <div className="flex items-center gap-3">
             <div
-              className="w-10 h-10 rounded-xl border flex items-center justify-center"
-              style={{ backgroundColor: BRAND.white, borderColor: BRAND.borderAccent, color: BRAND.accent }}
+              className="w-11 h-11 rounded-xl border flex items-center justify-center"
+              style={{
+                backgroundColor: ADMIN_UI.ivory,
+                borderColor: ADMIN_UI.border,
+                color: ADMIN_UI.gold,
+              }}
             >
               <ShieldCheck className="w-5 h-5" />
             </div>
             <div>
-              <div className="inline-flex items-center gap-1 text-xs uppercase tracking-wider" style={{ color: BRAND.accent }}>
+              <div
+                className="inline-flex items-center gap-1 text-[11px] uppercase tracking-[0.2em]"
+                style={{ color: ADMIN_UI.gold }}
+              >
                 <Sparkles className="w-3 h-3" />
-                <span>Boshqaruv</span>
+                <span>/admin/dashboard</span>
               </div>
-              <h1 className="text-2xl sm:text-3xl font-serif">Admin Panel</h1>
+              <h1
+                className="text-2xl sm:text-3xl"
+                style={{ fontFamily: "'Playfair Display', serif" }}
+              >
+                Admin Dashboard
+              </h1>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+            <span
+              className="text-[10px] uppercase tracking-wider px-2.5 py-1 rounded-full border"
+              style={{
+                borderColor: telegramConfigured ? `${ADMIN_UI.emerald}55` : ADMIN_UI.border,
+                color: telegramConfigured ? ADMIN_UI.emerald : ADMIN_UI.muted,
+                backgroundColor: ADMIN_UI.ivory,
+              }}
+            >
+              {telegramConfigured ? 'Telegram ulangan' : 'Telegram sozlanmagan'}
+            </span>
             <button
+              type="button"
               onClick={fetchData}
-              className="p-2.5 rounded-xl border cursor-pointer bg-white"
-              style={{ borderColor: BRAND.border, color: BRAND.accent }}
+              className="p-2.5 rounded-xl border cursor-pointer"
+              style={{
+                borderColor: ADMIN_UI.border,
+                backgroundColor: ADMIN_UI.ivory,
+                color: ADMIN_UI.gold,
+              }}
             >
               <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
             </button>
             <button
+              type="button"
               onClick={handleLogout}
-              className="px-3 py-2.5 rounded-xl border text-xs font-medium flex items-center gap-1.5 cursor-pointer bg-white"
-              style={{ borderColor: BRAND.border, color: BRAND.muted }}
+              className="px-3 py-2.5 rounded-xl border text-xs font-medium flex items-center gap-1.5 cursor-pointer"
+              style={{
+                borderColor: ADMIN_UI.border,
+                color: ADMIN_UI.muted,
+                backgroundColor: ADMIN_UI.ivory,
+              }}
             >
               <LogOut className="w-3.5 h-3.5" />
               Chiqish
             </button>
             <button
+              type="button"
               onClick={onBackToHome}
               className="px-4 py-2.5 rounded-xl font-medium text-xs uppercase tracking-wider cursor-pointer"
-              style={{ backgroundColor: BRAND.accent, color: BRAND.white }}
+              style={{ backgroundColor: ADMIN_UI.emerald, color: ADMIN_UI.ivory }}
             >
               Bosh Sahifa
             </button>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {/* Metrics */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
           {[
-            { label: 'Jami', value: stats.totalInvitations, icon: null },
+            { label: 'Jami taklifnomalar', value: stats.totalInvitations, icon: null },
             { label: 'Kutilmoqda', value: stats.pendingInvitations, icon: Clock },
             { label: 'Faol', value: stats.activeInvitations, icon: CheckCircle },
-            { label: 'RSVP', value: stats.totalRsvps, icon: Users },
+            { label: 'Telegram ulangan', value: stats.telegramLinked, icon: Users },
           ].map((s) => (
             <div
               key={s.label}
-              className="p-4 rounded-xl border bg-white space-y-1"
-              style={{ borderColor: BRAND.borderAccent }}
+              className="p-4 rounded-2xl border space-y-1"
+              style={{
+                borderColor: ADMIN_UI.border,
+                backgroundColor: 'rgba(255,255,255,0.82)',
+                boxShadow: '0 12px 28px rgba(26,26,26,0.04)',
+              }}
             >
-              <span className="text-xs uppercase tracking-wider flex items-center gap-1" style={{ color: BRAND.muted }}>
-                {s.icon && <s.icon className="w-3.5 h-3.5" />}
+              <span
+                className="text-[10px] uppercase tracking-wider flex items-center gap-1"
+                style={{ color: ADMIN_UI.muted }}
+              >
+                {s.icon && <s.icon className="w-3.5 h-3.5" style={{ color: ADMIN_UI.gold }} />}
                 {s.label}
               </span>
-              <span className="block text-2xl font-serif" style={{ color: BRAND.text }}>
+              <span
+                className="block text-2xl sm:text-3xl"
+                style={{ fontFamily: "'Playfair Display', serif", color: ADMIN_UI.charcoal }}
+              >
                 {s.value}
               </span>
             </div>
           ))}
         </div>
 
-        <div className="p-5 rounded-xl border bg-white space-y-3" style={{ borderColor: BRAND.borderAccent }}>
-          <h3 className="text-sm font-medium flex items-center gap-2" style={{ color: BRAND.text }}>
-            <Send className="w-4 h-4" style={{ color: BRAND.accent }} />
-            Aktivlash buyrug‘i (`/activate OT-XXXXX`)
+        {/* Command box */}
+        <div
+          className="p-5 rounded-2xl border space-y-3"
+          style={{
+            borderColor: ADMIN_UI.border,
+            backgroundColor: 'rgba(255,255,255,0.85)',
+          }}
+        >
+          <h3 className="text-sm font-medium flex items-center gap-2" style={{ color: ADMIN_UI.charcoal }}>
+            <Send className="w-4 h-4" style={{ color: ADMIN_UI.gold }} />
+            Tezkor aktivlash (`/activate OT-XXXXX`)
           </h3>
-          <form onSubmit={handleRunBotCommand} className="flex gap-2">
+          <form onSubmit={handleRunBotCommand} className="flex flex-col sm:flex-row gap-2">
             <input
               type="text"
               value={commandInput}
               onChange={(e) => setCommandInput(e.target.value)}
               className="flex-1 px-4 py-2.5 rounded-xl border text-sm font-mono focus:outline-none"
-              style={{ borderColor: BRAND.border, color: BRAND.text, backgroundColor: BRAND.bg }}
+              style={{
+                borderColor: ADMIN_UI.border,
+                color: ADMIN_UI.charcoal,
+                backgroundColor: ADMIN_UI.cream,
+              }}
             />
             <button
               type="submit"
               className="px-5 py-2.5 rounded-xl font-medium text-xs uppercase tracking-wider cursor-pointer"
-              style={{ backgroundColor: BRAND.accent, color: BRAND.white }}
+              style={{ backgroundColor: ADMIN_UI.gold, color: ADMIN_UI.charcoal }}
             >
               Bajarish
             </button>
           </form>
           {commandResult && (
-            <div
-              className="p-3 rounded-xl border text-xs font-mono break-all"
-              style={{ borderColor: BRAND.border, backgroundColor: BRAND.bg, color: BRAND.muted }}
+            <pre
+              className="p-3 rounded-xl border text-xs font-mono whitespace-pre-wrap break-all"
+              style={{
+                borderColor: ADMIN_UI.border,
+                backgroundColor: ADMIN_UI.cream,
+                color: ADMIN_UI.muted,
+              }}
             >
               {commandResult}
-            </div>
+            </pre>
           )}
         </div>
 
-        <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-1 p-1 rounded-xl border bg-white" style={{ borderColor: BRAND.border }}>
-              {(['ALL', 'PENDING', 'ACTIVE'] as const).map((f) => (
-                <button
-                  key={f}
-                  onClick={() => setFilter(f)}
-                  className="px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-all"
-                  style={{
-                    backgroundColor: filter === f ? BRAND.accent : 'transparent',
-                    color: filter === f ? BRAND.white : BRAND.muted,
-                  }}
-                >
-                  {f === 'ALL' ? 'Barchasi' : f === 'PENDING' ? 'Kutilmoqda' : 'Faol'}
-                </button>
-              ))}
-            </div>
-            <div className="relative w-full sm:w-64">
-              <Search className="w-4 h-4 absolute left-3 top-2.5" style={{ color: BRAND.muted }} />
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="ID yoki sarlavha..."
-                className="w-full pl-9 pr-4 py-2 rounded-xl border text-xs bg-white focus:outline-none"
-                style={{ borderColor: BRAND.border, color: BRAND.text }}
-              />
-            </div>
+        {/* Filters */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+          <div
+            className="flex items-center gap-1 p-1 rounded-xl border"
+            style={{ borderColor: ADMIN_UI.border, backgroundColor: ADMIN_UI.ivory }}
+          >
+            {(['ALL', 'PENDING', 'ACTIVE'] as const).map((f) => (
+              <button
+                key={f}
+                type="button"
+                onClick={() => setFilter(f)}
+                className="px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-all"
+                style={{
+                  backgroundColor: filter === f ? ADMIN_UI.emerald : 'transparent',
+                  color: filter === f ? ADMIN_UI.ivory : ADMIN_UI.muted,
+                }}
+              >
+                {f === 'ALL' ? 'Barchasi' : f === 'PENDING' ? 'PENDING' : 'ACTIVE'}
+              </button>
+            ))}
           </div>
+          <div className="relative w-full sm:w-72">
+            <Search className="w-4 h-4 absolute left-3 top-2.5" style={{ color: ADMIN_UI.muted }} />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="ID, mezbon yoki tadbir..."
+              className="w-full pl-9 pr-4 py-2 rounded-xl border text-xs focus:outline-none"
+              style={{
+                borderColor: ADMIN_UI.border,
+                color: ADMIN_UI.charcoal,
+                backgroundColor: ADMIN_UI.ivory,
+              }}
+            />
+          </div>
+        </div>
 
-          <div className="space-y-3">
-            {filtered.length === 0 ? (
-              <div className="py-12 text-center text-sm" style={{ color: BRAND.muted }}>
-                Taklifnomalar topilmadi.
-              </div>
-            ) : (
-              filtered.map((inv) => (
-                <div
-                  key={inv.id}
-                  className="p-5 rounded-xl border bg-white flex flex-col md:flex-row md:items-center justify-between gap-4"
-                  style={{ borderColor: BRAND.borderAccent }}
+        {/* Table */}
+        <div
+          className="rounded-2xl border overflow-hidden"
+          style={{
+            borderColor: ADMIN_UI.border,
+            backgroundColor: 'rgba(255,255,255,0.9)',
+            boxShadow: '0 16px 40px rgba(26,26,26,0.05)',
+          }}
+        >
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-215 text-left text-sm">
+              <thead>
+                <tr
+                  className="text-[10px] uppercase tracking-[0.16em]"
+                  style={{ color: ADMIN_UI.muted, borderBottom: `1px solid ${ADMIN_UI.border}` }}
                 >
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-mono text-sm font-medium" style={{ color: BRAND.accent }}>
-                        #{inv.id}
-                      </span>
-                      <span
-                        className="px-2.5 py-0.5 rounded-full text-[10px] font-medium uppercase"
-                        style={{
-                          backgroundColor: inv.status === 'ACTIVE' ? `${BRAND.accent}18` : `${BRAND.accent}10`,
-                          color: BRAND.accent,
-                          border: `1px solid ${BRAND.borderAccent}`,
-                        }}
+                  <th className="px-4 py-3 font-medium">ID</th>
+                  <th className="px-4 py-3 font-medium">Mezbon</th>
+                  <th className="px-4 py-3 font-medium">Tadbir</th>
+                  <th className="px-4 py-3 font-medium">Holat</th>
+                  <th className="px-4 py-3 font-medium">Telegram</th>
+                  <th className="px-4 py-3 font-medium">Yaratilgan</th>
+                  <th className="px-4 py-3 font-medium text-right">Amallar</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-4 py-12 text-center" style={{ color: ADMIN_UI.muted }}>
+                      Taklifnomalar topilmadi.
+                    </td>
+                  </tr>
+                ) : (
+                  filtered.map((inv) => {
+                    const linked = isTelegramLinked(inv.telegramChatId);
+                    const botLink = botStartUrl(inv.id, botUsername);
+                    return (
+                      <tr
+                        key={inv.id}
+                        style={{ borderTop: `1px solid ${ADMIN_UI.border}` }}
                       >
-                        {inv.status}
-                      </span>
-                      <span className="text-xs" style={{ color: BRAND.muted }}>
-                        RSVP: {inv.rsvps?.length || 0}
-                      </span>
-                    </div>
-                    <h3 className="text-lg font-serif">
-                      {inv.eventTitle} ({inv.hostName})
-                    </h3>
-                    <p className="text-xs" style={{ color: BRAND.muted }}>
-                      {inv.venueName} · {new Date(inv.eventDate).toLocaleDateString()}
-                    </p>
-                    {inv.status === 'PENDING' && (
-                      <p className="text-[11px] flex items-center gap-1" style={{ color: BRAND.muted }}>
-                        <Lock className="w-3 h-3" />
-                        Mehmon havolasi yopiq — avval aktivlashtiring
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <button
-                      onClick={() => onSelectInvitation(inv.id)}
-                      className="px-3 py-2 rounded-xl border text-xs font-medium flex items-center gap-1.5 cursor-pointer"
-                      style={{ borderColor: BRAND.border, color: BRAND.text }}
-                      title="Preview (ichki ko‘rish)"
-                    >
-                      <ExternalLink className="w-3.5 h-3.5" />
-                      Preview
-                    </button>
-                    {inv.status === 'ACTIVE' ? (
-                      <>
-                        <button
-                          onClick={() => copyGuestLink(inv.id)}
-                          className="px-3 py-2 rounded-xl border text-xs font-medium flex items-center gap-1 cursor-pointer"
-                          style={{ borderColor: BRAND.border, color: BRAND.accent }}
-                        >
-                          <Copy className="w-3.5 h-3.5" />
-                          {copiedId === inv.id ? 'Nusxalandi' : 'Havola'}
-                        </button>
-                        <button
-                          onClick={() => {
-                            const encoded = encodeURIComponent(testGuestName);
-                            window.open(`/v/${inv.id}?guest=${encoded}`, '_blank');
-                          }}
-                          className="px-3 py-2 rounded-xl border text-xs font-medium flex items-center gap-1 cursor-pointer"
-                          style={{ borderColor: BRAND.border, color: BRAND.muted }}
-                        >
-                          <ExternalLink className="w-3.5 h-3.5" />
-                          Mehmon
-                        </button>
-                      </>
-                    ) : (
-                      <button
-                        onClick={() => handleActivate(inv.id)}
-                        className="px-4 py-2 rounded-xl text-xs font-medium cursor-pointer"
-                        style={{ backgroundColor: BRAND.accent, color: BRAND.white }}
-                      >
-                        Aktivlashtirish
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))
-            )}
+                        <td className="px-4 py-3.5 font-mono text-xs font-medium" style={{ color: ADMIN_UI.gold }}>
+                          #{inv.id}
+                        </td>
+                        <td className="px-4 py-3.5">{inv.hostName}</td>
+                        <td className="px-4 py-3.5 max-w-45">
+                          <span className="line-clamp-2" style={{ fontFamily: "'Playfair Display', serif" }}>
+                            {inv.eventTitle}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3.5">
+                          <span
+                            className="inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide"
+                            style={{
+                              backgroundColor:
+                                inv.status === 'ACTIVE' ? `${ADMIN_UI.emerald}18` : `${ADMIN_UI.gold}18`,
+                              color: inv.status === 'ACTIVE' ? ADMIN_UI.emerald : ADMIN_UI.gold,
+                              border: `1px solid ${inv.status === 'ACTIVE' ? `${ADMIN_UI.emerald}40` : ADMIN_UI.border}`,
+                            }}
+                          >
+                            {inv.status}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3.5">
+                          <span
+                            className="inline-flex items-center gap-1 text-[11px]"
+                            style={{ color: linked ? ADMIN_UI.emerald : ADMIN_UI.muted }}
+                          >
+                            {linked ? (
+                              <>
+                                <Link2 className="w-3.5 h-3.5" /> Ulangan
+                              </>
+                            ) : (
+                              <>
+                                <Link2Off className="w-3.5 h-3.5" /> Ulanmagan
+                              </>
+                            )}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3.5 text-xs" style={{ color: ADMIN_UI.muted }}>
+                          {new Date(inv.createdAt).toLocaleDateString('uz-UZ')}
+                        </td>
+                        <td className="px-4 py-3.5">
+                          <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                            <button
+                              type="button"
+                              onClick={() => onSelectInvitation(inv.id)}
+                              className="px-2.5 py-1.5 rounded-lg border text-[11px] font-medium flex items-center gap-1 cursor-pointer"
+                              style={{ borderColor: ADMIN_UI.border, color: ADMIN_UI.charcoal }}
+                              title="Preview"
+                            >
+                              <ExternalLink className="w-3 h-3" />
+                              Ko‘rish
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => copyText(`bot-${inv.id}`, botLink)}
+                              className="px-2.5 py-1.5 rounded-lg border text-[11px] font-medium flex items-center gap-1 cursor-pointer"
+                              style={{ borderColor: ADMIN_UI.border, color: ADMIN_UI.gold }}
+                              title="Bot ulanish havolasini nusxalash"
+                            >
+                              <Copy className="w-3 h-3" />
+                              {copiedKey === `bot-${inv.id}` ? 'Nusxa' : 'Bot link'}
+                            </button>
+                            {inv.status === 'PENDING' ? (
+                              <button
+                                type="button"
+                                disabled={activatingId === inv.id}
+                                onClick={() => handleActivate(inv.id)}
+                                className="px-2.5 py-1.5 rounded-lg text-[11px] font-semibold flex items-center gap-1 cursor-pointer disabled:opacity-60"
+                                style={{
+                                  backgroundColor: ADMIN_UI.emerald,
+                                  color: ADMIN_UI.ivory,
+                                }}
+                              >
+                                <Zap className="w-3 h-3" />
+                                {activatingId === inv.id ? '…' : '1-Click Activate'}
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => copyText(`guest-${inv.id}`, guestShareUrl(inv.id))}
+                                className="px-2.5 py-1.5 rounded-lg border text-[11px] font-medium flex items-center gap-1 cursor-pointer"
+                                style={{ borderColor: `${ADMIN_UI.emerald}55`, color: ADMIN_UI.emerald }}
+                              >
+                                <Copy className="w-3 h-3" />
+                                {copiedKey === `guest-${inv.id}` ? 'Nusxa' : 'Mehmon'}
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>

@@ -23,7 +23,12 @@ function AppContent() {
       const searchParams = new URLSearchParams(window.location.search);
       const idParam = searchParams.get('id');
 
-      if (path === '/admin' || searchParams.get('view') === 'admin') {
+      if (
+        path === '/admin' ||
+        path === '/admin/dashboard' ||
+        path.startsWith('/admin/') ||
+        searchParams.get('view') === 'admin'
+      ) {
         setCurrentView('admin');
         return;
       }
@@ -110,7 +115,8 @@ function AppContent() {
 
   const navigateTo = (
     view: 'home' | 'builder' | 'admin' | 'invitation',
-    id?: string
+    id?: string,
+    templateId?: string
   ) => {
     setCurrentView(view);
     if (id) {
@@ -121,15 +127,19 @@ function AppContent() {
     } else if (view === 'home') {
       window.history.pushState({}, '', '/');
     } else if (view === 'builder') {
-      window.history.pushState({}, '', '/builder');
+      const qs = templateId ? `?template=${encodeURIComponent(templateId)}` : '';
+      window.history.pushState({}, '', `/builder${qs}`);
     } else if (view === 'admin') {
-      window.history.pushState({}, '', '/admin');
+      window.history.pushState({}, '', '/admin/dashboard');
     }
   };
 
   if (currentView === 'builder') {
+    const params = new URLSearchParams(window.location.search);
+    const initialTemplateId = params.get('template') || undefined;
     return (
       <LiveBuilder
+        initialTemplateId={initialTemplateId}
         onInvitationCreated={(newId) => navigateTo('invitation', newId)}
         onCancel={() => navigateTo('home')}
       />
@@ -203,6 +213,7 @@ function AppContent() {
     <LandingPage
       onCreateClick={() => navigateTo('builder')}
       onSelectSample={(id) => navigateTo('invitation', id)}
+      onSelectTemplate={(templateId) => navigateTo('builder', undefined, templateId)}
       onAdminClick={() => navigateTo('admin')}
     />
   );

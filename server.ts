@@ -11,12 +11,13 @@ loadEnv({ quiet: true });
 
 const PORT = Number(process.env.PORT) || 3000;
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
-// App Platform may leave NODE_ENV empty; `npm start` runs dist/server.cjs
+// `tsx server.ts` / npm run dev = development. Only real deploys use production.
+const runningViaTsx = (process.argv[1] || '').includes('server.ts');
 const isProduction =
-  process.env.NODE_ENV === 'production' ||
-  Boolean(process.env.APP_URL) ||
-  Boolean(process.env.DIGITALOCEAN_APP_LIFECYCLE) ||
-  (process.argv[1] || '').includes('server.cjs');
+  !runningViaTsx &&
+  (process.env.NODE_ENV === 'production' ||
+    Boolean(process.env.DIGITALOCEAN_APP_LIFECYCLE) ||
+    (process.argv[1] || '').includes('server.cjs'));
 
 async function startServer() {
   const app = createApiApp();

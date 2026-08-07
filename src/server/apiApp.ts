@@ -7,6 +7,19 @@ import {
   persistInvitationsToDisk,
   describePersistence,
 } from './invitationStore';
+import {
+  botStartLink,
+  getBotUsername,
+  getTelegramAdminChatId,
+  getTelegramBotToken,
+  guestPublicUrl,
+  isNumericTelegramChatId,
+  formatRsvpTelegramMessage,
+  notifyAdminActivated,
+  notifyHostLinked,
+  notifyHostRsvp,
+  sendTelegramMessage,
+} from './telegram';
 
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'taklifnoma2026';
@@ -229,8 +242,43 @@ export function createApiApp(): Express {
   });
 
   app.get('/api/admin/me', requireAdmin, (_req, res) => {
-    res.json({ success: true, username: ADMIN_USERNAME });
+    res.json({
+      success: true,
+      username: ADMIN_USERNAME,
+      botUsername: getBotUsername(),
+      telegramConfigured: Boolean(getTelegramBotToken() && getTelegramAdminChatId()),
+    });
   });
+
+  /** Shared activate: PENDING → ACTIVE + admin Telegram notify */
+  async function activateInvitationById(idRaw: string) {
+    const id = idRaw.replace(/^#/, '').toUpperCase();
+    const invitation = invitationsDb().get(id);
+    if (!invitation) {
+      return { ok: false as const, status: 404, message: 'Taklifnoma topilmadi' };
+    }
+
+    invitation.status = 'ACTIVE';
+    invitation.updatedAt = new Date().toISOString();
+    invitationsDb().set(id, invitation);
+    saveInvitations();
+
+    const telegram = await notifyAdminActivated({
+      invitationId: invitation.id,
+      hostName: invitation.hostName,
+      eventTitle: invitation.eventTitle,
+    });
+
+    return {
+      ok: true as const,
+      status: 200,
+      invitation,
+      telegram,
+      botLink: botStartLink(invitation.id),
+      guestLink: `/v/${invitation.id}`,
+      guestPublicUrl: guestPublicUrl(invitation.id),
+    };
+  }
 
   app.get('/api/invitations', requireAdmin, (_req, res) => {
     const items = Array.from(invitationsDb().values());
@@ -310,24 +358,167 @@ export function createApiApp(): Express {
     }
   });
 
-  app.post('/api/invitations/:id/activate', requireAdmin, (req, res) => {
-    const id = req.params.id.toUpperCase();
-    const invitation = invitationsDb().get(id);
-    if (!invitation) {
-      return res.status(404).json({ success: false, message: 'Taklifnoma topilmadi' });
+  app.post('/api/invitations/:id/activate', requireAdmin, async (req, res) => {
+    try {
+      const result = await activateInvitationById(req.params.id);
+      if (!result.ok) {
+        return res.status(result.status).json({ success: false, message: result.message });
+      }
+
+      res.json({
+        success: true,
+        message: `Taklifnoma #${result.invitation.id} muvaffaqiyatli faollashtirildi!`,
+        data: result.invitation,
+        guestLink: result.guestLink,
+        guestPublicUrl: result.guestPublicUrl,
+        botLink: result.botLink,
+        telegram: result.telegram,
+      });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Server xatosi';
+      res.status(500).json({ success: false, error: message });
     }
+  });
 
-    invitation.status = 'ACTIVE';
-    invitation.updatedAt = new Date().toISOString();
-    invitationsDb().set(id, invitation);
-    saveInvitations();
+  /** Alias: POST /api/admin/activate { invitationId } */
+  app.post('/api/admin/activate', requireAdmin, async (req, res) => {
+    try {
+      const invitationId =
+        typeof req.body?.invitationId === 'string' ? req.body.invitationId : '';
+      if (!invitationId.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: 'invitationId majburiy',
+        });
+      }
 
-    res.json({
-      success: true,
-      message: `Taklifnoma #${id} muvaffaqiyatli faollashtirildi!`,
-      data: invitation,
-      guestLink: `/v/${id}`,
-    });
+      const result = await activateInvitationById(invitationId);
+      if (!result.ok) {
+        return res.status(result.status).json({ success: false, message: result.message });
+      }
+
+      res.json({
+        success: true,
+        message: `Taklifnoma #${result.invitation.id} muvaffaqiyatli faollashtirildi!`,
+        data: result.invitation,
+        guestLink: result.guestLink,
+        guestPublicUrl: result.guestPublicUrl,
+        botLink: result.botLink,
+        telegram: result.telegram,
+      });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Server xatosi';
+      res.status(500).json({ success: false, error: message });
+    }
+  });
+
+  /**
+   * Telegram Bot webhook / long-poll forward target
+   * - /start OT-XXXXX → host chat ulash
+   * - /id → chat ID (admin sozlash uchun)
+   * - /activate OT-XXXXX → faqat TELEGRAM_ADMIN_CHAT_ID
+   */
+  app.post('/api/telegram/webhook', async (req, res) => {
+    try {
+      if (!getTelegramBotToken()) {
+        return res.status(503).json({
+          success: false,
+          message: 'TELEGRAM_BOT_TOKEN sozlanmagan',
+        });
+      }
+
+      const message = req.body?.message;
+      const text: string =
+        typeof message?.text === 'string' ? message.text.trim() : '';
+      const chatId = message?.chat?.id;
+
+      if (!text || chatId == null) {
+        return res.json({ ok: true });
+      }
+
+      const chatIdStr = String(chatId);
+      const adminChatId = getTelegramAdminChatId();
+      const botUser = getBotUsername().replace(/^@/, '');
+
+      // /id yoki /myid — admin Chat ID olish
+      if (/^\/(id|myid)(?:@\w+)?$/i.test(text)) {
+        await sendTelegramMessage(
+          chatIdStr,
+          `🆔 Sizning Telegram Chat ID:\n\n${chatIdStr}\n\n` +
+            `Buni .env.local ga yozing:\nTELEGRAM_ADMIN_CHAT_ID=${chatIdStr}`
+        );
+        return res.json({ ok: true, action: 'id' });
+      }
+
+      // /activate OT-XXXXX — faqat admin
+      const activateMatch = text.match(/^\/activate(?:@\w+)?\s+#?([A-Za-z0-9-]+)$/i);
+      if (activateMatch) {
+        if (!adminChatId || chatIdStr !== adminChatId) {
+          await sendTelegramMessage(chatIdStr, '⛔ Bu buyruq faqat admin uchun.');
+          return res.json({ ok: true, action: 'activate_denied' });
+        }
+        const result = await activateInvitationById(activateMatch[1]);
+        if (!result.ok) {
+          await sendTelegramMessage(chatIdStr, `❌ ${result.message}`);
+          return res.json({ ok: true, action: 'activate_fail' });
+        }
+        await sendTelegramMessage(
+          chatIdStr,
+          `✅ #${result.invitation.id} faollashtirildi.\n🔗 ${result.botLink}`
+        );
+        return res.json({ ok: true, action: 'activate' });
+      }
+
+      const startMatch = text.match(/^\/start(?:@\w+)?(?:\s+|_)?(.+)?$/i);
+      if (!startMatch) {
+        await sendTelegramMessage(
+          chatIdStr,
+          `Onlayn Taklifnoma botiga xush kelibsiz.\n\n` +
+            `• Taklifnoma ulash: https://t.me/${botUser}?start=OT-XXXXX\n` +
+            `• Chat ID: /id\n` +
+            `• Admin aktivlash: /activate OT-XXXXX`
+        );
+        return res.json({ ok: true, action: 'help' });
+      }
+
+      const payload = (startMatch[1] || '').trim().replace(/^#/, '');
+      if (!payload) {
+        await sendTelegramMessage(
+          chatIdStr,
+          `Assalomu alaykum! 👋\n\n` +
+            `Taklifnomani Telegramga ulash uchun admin yuborgan havolani oching:\n` +
+            `https://t.me/${botUser}?start=OT-XXXXX\n\n` +
+            `Chat ID kerak bo‘lsa: /id`
+        );
+        return res.json({ ok: true, action: 'start' });
+      }
+
+      const invitationId = payload.toUpperCase();
+      const invitation = invitationsDb().get(invitationId);
+      if (!invitation) {
+        await sendTelegramMessage(
+          chatIdStr,
+          `❌ #${invitationId} topilmadi.\nID ni tekshirib, qayta urinib ko‘ring.`
+        );
+        return res.json({ ok: true, linked: false });
+      }
+
+      invitation.telegramChatId = chatIdStr;
+      invitation.updatedAt = new Date().toISOString();
+      invitationsDb().set(invitationId, invitation);
+      saveInvitations();
+
+      await notifyHostLinked({
+        hostChatId: chatIdStr,
+        invitationId,
+      });
+
+      return res.json({ ok: true, linked: true, invitationId });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Webhook xatosi';
+      console.error('[telegram/webhook]', message);
+      res.json({ ok: false, error: message });
+    }
   });
 
   app.put('/api/invitations/:id', requireAdmin, (req, res) => {
@@ -385,7 +576,7 @@ export function createApiApp(): Express {
     }
   });
 
-  app.post('/api/invitations/:id/rsvp', (req, res) => {
+  app.post('/api/invitations/:id/rsvp', async (req, res) => {
     const id = req.params.id.toUpperCase();
     const invitation = invitationsDb().get(id);
     if (!invitation) {
@@ -418,11 +609,38 @@ export function createApiApp(): Express {
     invitationsDb().set(id, invitation);
     saveInvitations();
 
+    const allRsvps = invitation.rsvps || [];
+    const attendingCount = allRsvps.filter((r) => r.status === 'ATTENDING').length;
+    const declinedCount = allRsvps.filter((r) => r.status === 'DECLINED').length;
+
+    const logLine = formatRsvpTelegramMessage({
+      invitationId: invitation.id,
+      eventTitle: invitation.eventTitle,
+      hostName: invitation.hostName,
+      guestName: newRsvp.guestName,
+      role: newRsvp.role,
+      status: newRsvp.status,
+      plusOne: newRsvp.plusOne,
+      wishes: newRsvp.wishes,
+      createdAt: newRsvp.createdAt,
+      totalRsvps: allRsvps.length,
+      attendingCount,
+      declinedCount,
+    });
+
+    const telegramResult = isNumericTelegramChatId(invitation.telegramChatId)
+      ? await notifyHostRsvp({
+          hostChatId: invitation.telegramChatId!,
+          message: logLine,
+        })
+      : { ok: false, skipped: true, reason: 'Chat ulanmagan' };
+
     res.json({
       success: true,
       message: 'Tashrifingiz muvaffaqiyatli qabul qilindi!',
       data: newRsvp,
-      telegramSimulatedLog: `🔔 [${invitation.eventTitle}]: ${guestName} (${role || 'Mehmon'}) tashrifini ${status === 'ATTENDING' ? 'TASDIQLADI' : 'rad etdi'}!`,
+      telegramSimulatedLog: logLine,
+      telegram: telegramResult,
     });
   });
 
@@ -431,6 +649,7 @@ export function createApiApp(): Express {
     const pending = items.filter((i) => i.status === 'PENDING').length;
     const active = items.filter((i) => i.status === 'ACTIVE').length;
     const totalRsvps = items.reduce((acc, curr) => acc + (curr.rsvps?.length || 0), 0);
+    const telegramLinked = items.filter((i) => isNumericTelegramChatId(i.telegramChatId)).length;
 
     res.json({
       success: true,
@@ -439,7 +658,10 @@ export function createApiApp(): Express {
         pendingInvitations: pending,
         activeInvitations: active,
         totalRsvps,
+        telegramLinked,
       },
+      botUsername: getBotUsername(),
+      telegramConfigured: Boolean(getTelegramBotToken() && getTelegramAdminChatId()),
     });
   });
 

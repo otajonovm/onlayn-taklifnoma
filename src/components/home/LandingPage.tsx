@@ -1,18 +1,22 @@
 import React from 'react';
 import { BRAND, WEDDING_CATEGORY_LABEL } from '../../config/themes';
-import { WEDDING_IMAGES } from '../../data/weddingImagery';
 import { ArrowRight, Heart, Send, Sparkles } from 'lucide-react';
 import { WEDDING_TEMPLATES } from '@/config/weddingTemplates';
+import { TemplatePreviewThumb } from '@/components/builder/TemplatePreviewThumb';
+import { HeroSection } from '@/components/hero/HeroSection';
 
 interface LandingPageProps {
   onCreateClick: () => void;
   onSelectSample: (id: string) => void;
+  /** Open builder with a specific wedding template (WD-101 / WD-102 / WD-103) */
+  onSelectTemplate: (templateId: string) => void;
   onAdminClick: () => void;
 }
 
 export const LandingPage: React.FC<LandingPageProps> = ({
   onCreateClick,
   onSelectSample,
+  onSelectTemplate,
   onAdminClick,
 }) => {
   return (
@@ -71,76 +75,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </div>
       </nav>
 
-      <main className="relative flex-1 px-4 sm:px-8 md:px-12 max-w-6xl mx-auto w-full pt-16 md:pt-24 pb-20">
-        <div className="max-w-2xl mx-auto text-center space-y-8">
-          <p
-            className="text-[11px] uppercase tracking-[0.25em] font-medium"
-            style={{ color: BRAND.accent }}
-          >
-            Premium To'y & Nikoh Taklifnomalari
-          </p>
-
-          <h1 className="text-4xl sm:text-5xl md:text-6xl font-serif font-normal leading-[1.15] tracking-tight">
-            Onlayn Taklifnoma
-          </h1>
-
-          <p className="text-base sm:text-lg max-w-lg mx-auto leading-relaxed" style={{ color: BRAND.muted }}>
-            Nikoh to'yingiz uchun nafis, minimalist raqamli taklifnoma — ochiluvchi konvert,
-            musiqa va Telegram orqali RSVP.
-          </p>
-
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
-            <button
-              onClick={onCreateClick}
-              className="px-8 py-3.5 rounded-full font-medium text-sm flex items-center gap-2 transition-all cursor-pointer hover:opacity-90"
-              style={{ backgroundColor: BRAND.accent, color: BRAND.white }}
-            >
-              <span>Taklifnoma Yaratish</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => onSelectSample('OT-84920')}
-              className="px-8 py-3.5 rounded-full font-medium text-sm border transition-all cursor-pointer hover:bg-white"
-              style={{ borderColor: BRAND.borderAccent, color: BRAND.text, backgroundColor: BRAND.white }}
-            >
-              Namunani Ko'rish
-            </button>
-          </div>
-        </div>
-
-        {/* Hero invitation preview — full-bleed visual plane via large composition */}
-        <div className="mt-20 max-w-md mx-auto">
-          <div
-            className="relative aspect-3/4 rounded-sm overflow-hidden border"
-            style={{
-              backgroundColor: BRAND.white,
-              borderColor: BRAND.borderAccent,
-              boxShadow: '0 24px 48px rgba(30, 41, 59, 0.06)',
-            }}
-          >
-            <img
-              src={WEDDING_IMAGES.ringsClose}
-              alt="Nikoh uzuklari"
-              className="absolute inset-0 w-full h-full object-cover opacity-90"
-            />
-            <div
-              className="absolute inset-0 flex flex-col items-center justify-end p-10 text-center"
-              style={{
-                background: 'linear-gradient(to top, rgba(253,251,247,0.97) 0%, rgba(253,251,247,0.55) 45%, transparent 70%)',
-              }}
-            >
-              <p className="text-[10px] uppercase tracking-[0.3em] mb-3" style={{ color: BRAND.accent }}>
-                Nikoh To'yi
-              </p>
-              <h2 className="text-3xl font-serif mb-2" style={{ color: BRAND.text }}>
-                Alisher <span className="italic font-light" style={{ color: BRAND.accent }}>&</span> Nigora
-              </h2>
-              <div className="w-10 h-px mb-3" style={{ backgroundColor: BRAND.accent }} />
-              <p className="text-sm" style={{ color: BRAND.muted }}>Shanba, 16-Avgust 2026</p>
-            </div>
-          </div>
-        </div>
-      </main>
+      <HeroSection
+        onCreateClick={onCreateClick}
+        onPreviewSample={() => onSelectSample('OT-84920')}
+      />
 
       <section id="templates" className="py-20 px-4 sm:px-8 md:px-12 border-t" style={{ borderColor: BRAND.border }}>
         <div className="max-w-6xl mx-auto space-y-12">
@@ -154,96 +92,45 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
-            {Object.values(WEDDING_TEMPLATES).map((template) => {
-              const coupleRaw = template.content.hero.coupleNames;
-              const coupleParts = coupleRaw.split('&').map((s) => s.trim());
-              const groom = coupleParts[0] || '';
-              const bride = coupleParts[1] || '';
-
-              const monthNamesUz = [
-                'Yanvar',
-                'Fevral',
-                'Mart',
-                'Aprel',
-                'May',
-                'Iyun',
-                'Iyul',
-                'Avgust',
-                'Sentabr',
-                'Oktabr',
-                'Noyabr',
-                'Dekabr',
-              ];
-              const d = new Date(`${template.content.calendar.eventDate}T00:00:00`);
-              const dateLabel = !isNaN(d.getTime())
-                ? `${d.getDate()}-${monthNamesUz[d.getMonth()]}-${d.getFullYear()}`
-                : template.content.calendar.eventDate;
-
-              const thumb =
-                template.thumbnail ||
-                template.content.hero.coverImage ||
-                WEDDING_IMAGES.ringsClose;
-
-              return (
-                <div key={template.id} className="group flex flex-col">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 max-w-5xl mx-auto">
+            {Object.values(WEDDING_TEMPLATES).map((template) => (
+              <button
+                key={template.id}
+                type="button"
+                onClick={() => onSelectTemplate(template.id)}
+                className="group flex flex-col text-left cursor-pointer"
+              >
                 <div
-                  className="relative aspect-4/5 overflow-hidden border mb-4"
+                  className="relative overflow-hidden mb-4 transition-all duration-300 group-hover:-translate-y-1 rounded-xl border"
                   style={{
-                    borderColor: BRAND.borderAccent,
                     backgroundColor: BRAND.white,
-                    boxShadow: '0 16px 36px rgba(30, 41, 59, 0.05)',
+                    borderColor: BRAND.borderAccent,
+                    boxShadow: '0 18px 40px rgba(30, 41, 59, 0.08)',
                   }}
                 >
-                  <img
-                    src={thumb}
-                    alt=""
-                    aria-hidden="true"
-                    className="absolute inset-0 w-full h-full object-cover opacity-90 transition-transform duration-700 group-hover:scale-105"
-                  />
-                  <div
-                    className="absolute inset-0 flex flex-col items-center justify-end p-8 text-center"
-                    style={{
-                      background:
-                        'linear-gradient(to top, rgba(253,251,247,0.97) 0%, rgba(253,251,247,0.55) 45%, transparent 70%)',
-                    }}
-                  >
-                    <p
-                      className="text-[10px] uppercase tracking-[0.3em] mb-2"
-                      style={{ color: BRAND.accent }}
-                    >
-                      {template.id}
-                    </p>
-                    <h3 className="text-xl font-serif mb-2" style={{ color: BRAND.text }}>
-                      {groom}{' '}
-                      <span className="italic font-light" style={{ color: BRAND.accent }}>
-                        &
-                      </span>{' '}
-                      {bride}
-                    </h3>
-                    <div className="w-10 h-px mb-3" style={{ backgroundColor: BRAND.accent }} />
-                    <p className="text-sm" style={{ color: BRAND.muted }}>
-                      {dateLabel}
-                    </p>
-                  </div>
+                  <TemplatePreviewThumb template={template} />
                 </div>
+                <p
+                  className="text-[10px] uppercase tracking-[0.2em] mb-1"
+                  style={{ color: BRAND.accent }}
+                >
+                  {template.id}
+                </p>
                 <h3 className="font-serif text-lg mb-1" style={{ color: BRAND.text }}>
                   {template.name}
                 </h3>
-                <p className="text-xs leading-relaxed mb-4 flex-1" style={{ color: BRAND.muted }}>
+                <p className="text-xs leading-relaxed mb-3 flex-1" style={{ color: BRAND.muted }}>
                   {template.description}
                 </p>
-                <button
-                  onClick={onCreateClick}
-                  className="text-xs font-medium uppercase tracking-wider flex items-center gap-1.5 cursor-pointer hover:opacity-70 transition-opacity"
+                <span
+                  className="text-xs font-medium uppercase tracking-wider inline-flex items-center gap-1.5 group-hover:opacity-70 transition-opacity"
                   style={{ color: BRAND.accent }}
                 >
                   <span>Tanlash</span>
                   <ArrowRight className="w-3.5 h-3.5" />
-                </button>
-                </div>
-              );
-            })}
+                </span>
+              </button>
+            ))}
           </div>
         </div>
       </section>
