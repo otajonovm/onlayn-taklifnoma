@@ -4,6 +4,7 @@ import path from 'path';
 import { config as loadEnv } from 'dotenv';
 import { createApiApp } from './src/server/apiApp';
 import { describePersistence } from './src/server/invitationStore';
+import { ensureTelegramWebhook } from './src/server/telegram';
 
 // Local only — App Platform / Vercel inject env vars into process.env directly
 loadEnv({ path: '.env.local', quiet: true });
@@ -49,6 +50,7 @@ async function startServer() {
     );
     console.log(`[Storage] ${describePersistence()}`);
     console.log(`[Admin] username=${ADMIN_USERNAME}`);
+    void ensureTelegramWebhook();
   });
 }
 

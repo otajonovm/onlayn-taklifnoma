@@ -26,12 +26,32 @@ export function publicAppBaseUrl(): string {
 }
 
 export function guestPublicUrl(invitationId: string): string {
-  return `${publicAppBaseUrl()}/v/${invitationId}`;
+  return `${publicAppBaseUrl()}/v/${normalizeInvitationId(invitationId)}`;
+}
+
+/**
+ * Telegram deep-link va turli yozuvlarni yagona ID ga keltirish.
+ * OT_31707 / ot-31707 / #OT-31707 / OT31707 → OT-31707
+ */
+export function normalizeInvitationId(raw: string): string {
+  let s = (raw || '').trim().replace(/^#/, '').toUpperCase();
+  s = s.replace(/[\s_]+/g, '-');
+  const compact = s.match(/^OT-?(\d{4,})$/);
+  if (compact) return `OT-${compact[1]}`;
+  return s;
+}
+
+/**
+ * Deep-link payload: Telegram ba’zan `-` ni noqulay deb hisoblaydi —
+ * underscore bilan yuboramiz, serverda qayta `-` ga aylantiramiz.
+ */
+export function botStartPayload(invitationId: string): string {
+  return normalizeInvitationId(invitationId).replace(/-/g, '_');
 }
 
 export function botStartLink(invitationId: string, botUsername = getBotUsername()): string {
   const user = botUsername.replace(/^@/, '');
-  return `https://t.me/${user}?start=${invitationId}`;
+  return `https://t.me/${user}?start=${botStartPayload(invitationId)}`;
 }
 
 /** True when host linked via /start (numeric chat id). */
@@ -89,6 +109,45 @@ export async function sendTelegramMessage(
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Noma’lum xato';
     return { ok: false, reason: message };
+  }
+}
+
+/** Production’da Telegram webhookni APP_URL ga bog‘lash */
+export async function ensureTelegramWebhook(): Promise<void> {
+  const token = getTelegramBotToken();
+  const base = publicAppBaseUrl();
+  if (!token) {
+    console.warn('[telegram] TELEGRAM_BOT_TOKEN yo‘q — webhook o‘rnatilmadi');
+    return;
+  }
+  if (process.env.TELEGRAM_SKIP_WEBHOOK === '1') {
+    console.log('[telegram] TELEGRAM_SKIP_WEBHOOK=1 — o‘tkazib yuborildi');
+    return;
+  }
+  if (!/^https:\/\//i.test(base) || /localhost|127\.0\.0\.1/i.test(base)) {
+    console.log(`[telegram] APP_URL lokal (${base}) — webhook o‘rnatilmaydi (npm run bot ishlating)`);
+    return;
+  }
+
+  const hookUrl = `${base}/api/telegram/webhook`;
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${token}/setWebhook`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        url: hookUrl,
+        allowed_updates: ['message'],
+        drop_pending_updates: false,
+      }),
+    });
+    const data = (await res.json()) as { ok?: boolean; description?: string };
+    if (data.ok) {
+      console.log(`[telegram] webhook OK → ${hookUrl}`);
+    } else {
+      console.warn(`[telegram] setWebhook xato: ${data.description || res.status}`);
+    }
+  } catch (err) {
+    console.warn('[telegram] setWebhook failed:', err instanceof Error ? err.message : err);
   }
 }
 

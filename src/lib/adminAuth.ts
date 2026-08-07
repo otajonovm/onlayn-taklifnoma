@@ -29,7 +29,8 @@ export function guestShareUrl(invitationId: string, origin = window.location.ori
 /** Deep-link so host can /start and link their Telegram chat */
 export function botStartUrl(invitationId: string, botUsername: string): string {
   const user = botUsername.replace(/^@/, '') || 'onlayntaklifnomabot';
-  return `https://t.me/${user}?start=${invitationId}`;
+  const payload = invitationId.replace(/^#/, '').toUpperCase().replace(/-/g, '_');
+  return `https://t.me/${user}?start=${payload}`;
 }
 
 /** Host linked bot if telegramChatId is a numeric chat id */

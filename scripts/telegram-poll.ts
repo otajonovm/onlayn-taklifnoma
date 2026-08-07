@@ -1,7 +1,10 @@
 /**
- * Local Telegram long-polling — webhook o‘rniga (localhost uchun).
- * Usage: npm run bot
- * Server (`npm run dev`) ham ishlashi kerak.
+ * Local Telegram long-polling — FAQAT localhost uchun.
+ * Usage: npm run bot   (APP_URL=http://localhost:3000)
+ *
+ * DIQQAT: Production (DigitalOcean) da `npm run bot` ISHLATMANG —
+ * u webhookni o‘chirib, production ID larni lokal bazadan qidiradi.
+ * Production: server startida setWebhook avtomatik.
  */
 import { config as loadEnv } from 'dotenv';
 
@@ -11,9 +14,17 @@ loadEnv({ quiet: true });
 const token = process.env.TELEGRAM_BOT_TOKEN?.trim();
 const appUrl = (process.env.APP_URL || 'http://localhost:3000').replace(/\/$/, '');
 const webhookUrl = `${appUrl}/api/telegram/webhook`;
+const isLocal = /localhost|127\.0\.0\.1/i.test(appUrl);
 
 if (!token) {
   console.error('❌ TELEGRAM_BOT_TOKEN .env.local da topilmadi');
+  process.exit(1);
+}
+
+if (!isLocal) {
+  console.error('❌ npm run bot faqat lokal APP_URL uchun.');
+  console.error(`   Hozirgi APP_URL=${appUrl}`);
+  console.error('   Production’da webhook server o‘zi o‘rnatadi. Lokal pollingni to‘xtating.');
   process.exit(1);
 }
 
@@ -46,12 +57,12 @@ async function main() {
   const me = await tg<{ result: { username?: string; first_name?: string } }>('getMe');
   console.log(`🤖 Bot: @${me.result.username || '?'} (${me.result.first_name || ''})`);
   console.log(`📡 Updates → ${webhookUrl}`);
+  console.log('⚠️  Lokal rejim: production webhook vaqtincha o‘chiriladi.');
+  console.log('    DO da ishlash uchun bu skriptni TO‘XTATING va deploy qiling.\n');
 
-  // Local polling uchun webhookni o‘chirish shart
   await tg('deleteWebhook', { drop_pending_updates: false });
-  console.log('✅ Webhook o‘chirildi — long-polling yoqildi');
-  console.log('👉 Botni oching: https://t.me/onlayntaklifnomabot');
-  console.log('👉 Chat ID olish: botga /id yuboring\n');
+  console.log('✅ Long-polling yoqildi');
+  console.log('👉 https://t.me/onlayntaklifnomabot  |  /id\n');
 
   let offset = 0;
   for (;;) {

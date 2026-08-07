@@ -14,10 +14,12 @@ import {
   getTelegramBotToken,
   guestPublicUrl,
   isNumericTelegramChatId,
+  normalizeInvitationId,
   formatRsvpTelegramMessage,
   notifyAdminActivated,
   notifyHostLinked,
   notifyHostRsvp,
+  publicAppBaseUrl,
   sendTelegramMessage,
 } from './telegram';
 
@@ -44,6 +46,32 @@ function invitationsDb(): Map<string, Invitation> {
 
 function saveInvitations(): void {
   persistInvitationsToDisk(invitationsDb());
+}
+
+/** Diskdan yangilab, OT_31707 / OT-31707 kabi variantlarni topadi */
+function findInvitationById(rawId: string): Invitation | undefined {
+  const id = normalizeInvitationId(rawId);
+  const db = invitationsDb();
+
+  const direct = db.get(id);
+  if (direct) return direct;
+
+  // Boshqa instance yozgan bo‘lishi mumkin — diskdan qayta yuklash
+  try {
+    const fresh = loadInvitationsFromDisk();
+    for (const [key, value] of fresh.entries()) {
+      db.set(key, value);
+    }
+  } catch {
+    /* ignore */
+  }
+
+  if (db.get(id)) return db.get(id);
+
+  for (const [key, value] of db.entries()) {
+    if (normalizeInvitationId(key) === id) return value;
+  }
+  return undefined;
 }
 
 function adminTokens(): Set<string> {
@@ -252,11 +280,11 @@ export function createApiApp(): Express {
 
   /** Shared activate: PENDING → ACTIVE + admin Telegram notify */
   async function activateInvitationById(idRaw: string) {
-    const id = idRaw.replace(/^#/, '').toUpperCase();
-    const invitation = invitationsDb().get(id);
+    const invitation = findInvitationById(idRaw);
     if (!invitation) {
       return { ok: false as const, status: 404, message: 'Taklifnoma topilmadi' };
     }
+    const id = invitation.id;
 
     invitation.status = 'ACTIVE';
     invitation.updatedAt = new Date().toISOString();
@@ -451,7 +479,7 @@ export function createApiApp(): Express {
       }
 
       // /activate OT-XXXXX — faqat admin
-      const activateMatch = text.match(/^\/activate(?:@\w+)?\s+#?([A-Za-z0-9-]+)$/i);
+      const activateMatch = text.match(/^\/activate(?:@\w+)?\s+#?([A-Za-z0-9_-]+)$/i);
       if (activateMatch) {
         if (!adminChatId || chatIdStr !== adminChatId) {
           await sendTelegramMessage(chatIdStr, '⛔ Bu buyruq faqat admin uchun.');
@@ -474,7 +502,7 @@ export function createApiApp(): Express {
         await sendTelegramMessage(
           chatIdStr,
           `Onlayn Taklifnoma botiga xush kelibsiz.\n\n` +
-            `• Taklifnoma ulash: https://t.me/${botUser}?start=OT-XXXXX\n` +
+            `• Taklifnoma ulash: admin yuborgan bot havolasini oching\n` +
             `• Chat ID: /id\n` +
             `• Admin aktivlash: /activate OT-XXXXX`
         );
@@ -487,33 +515,42 @@ export function createApiApp(): Express {
           chatIdStr,
           `Assalomu alaykum! 👋\n\n` +
             `Taklifnomani Telegramga ulash uchun admin yuborgan havolani oching:\n` +
-            `https://t.me/${botUser}?start=OT-XXXXX\n\n` +
+            `https://t.me/${botUser}?start=OT_XXXXX\n\n` +
             `Chat ID kerak bo‘lsa: /id`
         );
         return res.json({ ok: true, action: 'start' });
       }
 
-      const invitationId = payload.toUpperCase();
-      const invitation = invitationsDb().get(invitationId);
+      const invitationId = normalizeInvitationId(payload);
+      const invitation = findInvitationById(invitationId);
       if (!invitation) {
+        const known = Array.from(invitationsDb().keys()).slice(0, 5).join(', ') || '—(bo‘sh)';
+        console.warn(
+          `[telegram/webhook] ID topilmadi: raw="${payload}" norm="${invitationId}" store=${describePersistence()} keys=${known}`
+        );
         await sendTelegramMessage(
           chatIdStr,
-          `❌ #${invitationId} topilmadi.\nID ni tekshirib, qayta urinib ko‘ring.`
+          `❌ #${invitationId} shu server bazasida topilmadi.\n\n` +
+            `Sabab ko‘pincha:\n` +
+            `• Taklifnoma boshqa muhitda yaratilgan (local ≠ DigitalOcean)\n` +
+            `• Yoki lokal "npm run bot" production webhookni o‘chirgan\n\n` +
+            `Sayt: ${publicAppBaseUrl()}\n` +
+            `Admin paneldan qayta "Bot link" nusxalang va shu havola bilan Start bosing.`
         );
-        return res.json({ ok: true, linked: false });
+        return res.json({ ok: true, linked: false, invitationId });
       }
 
       invitation.telegramChatId = chatIdStr;
       invitation.updatedAt = new Date().toISOString();
-      invitationsDb().set(invitationId, invitation);
+      invitationsDb().set(invitation.id, invitation);
       saveInvitations();
 
       await notifyHostLinked({
         hostChatId: chatIdStr,
-        invitationId,
+        invitationId: invitation.id,
       });
 
-      return res.json({ ok: true, linked: true, invitationId });
+      return res.json({ ok: true, linked: true, invitationId: invitation.id });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Webhook xatosi';
       console.error('[telegram/webhook]', message);
