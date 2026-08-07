@@ -237,6 +237,13 @@ export function createApiApp(): Express {
       invitations: invitationsDb().size,
       persistence: describePersistence(),
       uptimeSeconds: Math.round(process.uptime()),
+      appUrl: publicAppBaseUrl(),
+      telegram: {
+        tokenSet: Boolean(getTelegramBotToken()),
+        adminChatSet: Boolean(getTelegramAdminChatId()),
+        botUsername: getBotUsername(),
+        webhookPath: '/api/telegram/webhook',
+      },
     });
   });
 

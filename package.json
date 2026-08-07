@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "tsx server.ts",
     "bot": "tsx scripts/telegram-poll.ts",
+    "bot:webhook": "tsx scripts/set-webhook.ts",
     "build": "npm run build:web && npm run build:server",
     "build:web": "vite build",
     "build:server": "esbuild server.ts --bundle --platform=node --target=node20 --format=cjs --outfile=dist/server.cjs --packages=external",
