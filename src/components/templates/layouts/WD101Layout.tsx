@@ -35,7 +35,11 @@ const WEEKDAYS_UZ = [
 ] as const;
 
 /** To‘liq o‘zbek oy/kun nomi — Intl ba’zan "M08" qaytaradi */
-function formatEventWhen(iso?: string, monthNames?: string[]): string {
+function formatEventWhen(
+  iso?: string,
+  monthNames?: string[],
+  includeTime = true
+): string {
   if (!iso) return '';
   try {
     const d = new Date(iso);
@@ -45,6 +49,7 @@ function formatEventWhen(iso?: string, monthNames?: string[]): string {
     const day = d.getDate();
     const month = months[d.getMonth()] || MONTHS_UZ[d.getMonth()];
     const year = d.getFullYear();
+    if (!includeTime) return `${weekday}, ${day}-${month} ${year}`;
     const hh = String(d.getHours()).padStart(2, '0');
     const mm = String(d.getMinutes()).padStart(2, '0');
     return `${weekday}, ${day}-${month} ${year}, ${hh}:${mm}`;
@@ -65,10 +70,12 @@ export const WD101Layout: React.FC<WeddingLayoutProps> = ({ data }) => {
     eventTitle,
     eventType,
     eventDate,
+    eventShowTime,
     venueName,
     locationAddress,
     qizBazmiTitle,
     qizBazmiDate,
+    qizBazmiShowTime,
     qizBazmiVenue,
     qizBazmiAddress,
     styles,
@@ -84,7 +91,7 @@ export const WD101Layout: React.FC<WeddingLayoutProps> = ({ data }) => {
     {
       key: 'nikoh',
       title: eventType || eventTitle || "Nikoh To'yi",
-      when: formatEventWhen(eventDate, content.calendar.monthNamesUz),
+      when: formatEventWhen(eventDate, content.calendar.monthNamesUz, eventShowTime !== false),
       place: [venueName, locationAddress].filter(Boolean).join(' · '),
     },
     ...(showQizBazmi
@@ -92,7 +99,11 @@ export const WD101Layout: React.FC<WeddingLayoutProps> = ({ data }) => {
           {
             key: 'qiz-bazmi',
             title: qizBazmiTitle?.trim() || 'Qiz bazmi',
-            when: formatEventWhen(qizBazmiDate, content.calendar.monthNamesUz),
+            when: formatEventWhen(
+              qizBazmiDate,
+              content.calendar.monthNamesUz,
+              qizBazmiShowTime !== false
+            ),
             place: [qizBazmiVenue, qizBazmiAddress].filter(Boolean).join(' · '),
           },
         ]
@@ -214,6 +225,7 @@ export const WD101Layout: React.FC<WeddingLayoutProps> = ({ data }) => {
           <CalendarGrid
             eventDate={eventDate}
             eventTitle={eventType || eventTitle || "Nikoh To'yi"}
+            showTime={eventShowTime !== false}
             venueName={venueName}
             locationAddress={locationAddress}
             accentColor={styles.colorAccent}
@@ -228,6 +240,7 @@ export const WD101Layout: React.FC<WeddingLayoutProps> = ({ data }) => {
                     date: qizBazmiDate,
                     title: qizBazmiTitle?.trim() || 'Qiz bazmi',
                     venueName: qizBazmiVenue || undefined,
+                    showTime: qizBazmiShowTime !== false,
                   }
                 : undefined
             }

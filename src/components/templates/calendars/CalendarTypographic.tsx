@@ -8,6 +8,7 @@ import type { CalendarVariantProps } from './CalendarGrid';
 export const CalendarTypographic: React.FC<CalendarVariantProps> = ({
   eventDate,
   eventTitle,
+  showTime = true,
   venueName = 'Tantanalar Saroyi',
   locationAddress = 'Toshkent sh.',
   accentColor = '#C5A059',
@@ -96,11 +97,15 @@ export const CalendarTypographic: React.FC<CalendarVariantProps> = ({
       </div>
 
       <div className="mt-6 flex flex-wrap items-center gap-4">
-        <span className="inline-flex items-center gap-1.5 text-sm font-serif" style={{ color: textColor }}>
-          <Clock className="w-3.5 h-3.5" style={{ color: accentColor }} />
-          {timeStr}
-        </span>
-        <span className="w-px h-4" style={{ backgroundColor: `${accentColor}40` }} />
+        {showTime ? (
+          <>
+            <span className="inline-flex items-center gap-1.5 text-sm font-serif" style={{ color: textColor }}>
+              <Clock className="w-3.5 h-3.5" style={{ color: accentColor }} />
+              {timeStr}
+            </span>
+            <span className="w-px h-4" style={{ backgroundColor: `${accentColor}40` }} />
+          </>
+        ) : null}
         <span className="text-sm truncate" style={{ color: BRAND.muted }}>
           {venueName}
         </span>

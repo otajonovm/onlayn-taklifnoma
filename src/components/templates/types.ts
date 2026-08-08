@@ -16,10 +16,12 @@ export interface WeddingData {
   brideName?: string;
   monogram: string;
   eventDate: string;
+  eventShowTime?: boolean;
   venueName: string;
   locationAddress: string;
   qizBazmiTitle?: string;
   qizBazmiDate?: string;
+  qizBazmiShowTime?: boolean;
   qizBazmiVenue?: string;
   qizBazmiAddress?: string;
   yandexUrl?: string;
@@ -60,10 +62,12 @@ export function invitationToWeddingData(input: {
     eventDate:
       invitation.eventDate ||
       `${content.calendar.eventDate}T${content.calendar.eventTime}:00`,
+    eventShowTime: invitation.eventShowTime !== false,
     venueName: invitation.venueName || content.venue.name,
     locationAddress: invitation.locationAddress || content.venue.address,
     qizBazmiTitle: invitation.qizBazmiTitle || 'Qiz bazmi',
     qizBazmiDate: invitation.qizBazmiDate,
+    qizBazmiShowTime: invitation.qizBazmiShowTime !== false,
     qizBazmiVenue: invitation.qizBazmiVenue,
     qizBazmiAddress: invitation.qizBazmiAddress,
     yandexUrl: invitation.yandexUrl || content.venue.yandexNavUrl,

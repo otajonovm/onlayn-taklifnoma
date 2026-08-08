@@ -7,6 +7,7 @@ import type { CalendarVariantProps } from './CalendarGrid';
 export const CalendarRibbon: React.FC<CalendarVariantProps> = ({
   eventDate,
   eventTitle,
+  showTime = true,
   venueName = 'Tantanalar Saroyi',
   locationAddress = 'Toshkent sh.',
   accentColor = BRAND.accent,
@@ -77,9 +78,11 @@ export const CalendarRibbon: React.FC<CalendarVariantProps> = ({
           <span className="text-sm font-serif tracking-wide" style={{ color: textColor }}>
             {monthName} {year}
           </span>
-          <span className="text-xs mt-1" style={{ color: BRAND.muted }}>
-            Soat {timeStr}
-          </span>
+          {showTime ? (
+            <span className="text-xs mt-1" style={{ color: BRAND.muted }}>
+              Soat {timeStr}
+            </span>
+          ) : null}
         </div>
 
         <div

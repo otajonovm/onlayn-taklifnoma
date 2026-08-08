@@ -389,10 +389,18 @@ export function createApiApp(): Express {
         eventTitle: body.eventTitle || "Nikoh To'yi Marosimi",
         eventType: body.eventType || "Nikoh To'yi",
         eventDate: eventDateIso,
+        eventShowTime:
+          typeof body.eventShowTime === 'boolean' ? body.eventShowTime : true,
         venueName: body.venueName || 'Tantanalar Saroyi',
         locationAddress: body.locationAddress || 'Toshkent shahri',
         qizBazmiTitle,
         qizBazmiDate,
+        qizBazmiShowTime:
+          safeTemplateId === 'WD-101'
+            ? typeof body.qizBazmiShowTime === 'boolean'
+              ? body.qizBazmiShowTime
+              : true
+            : undefined,
         qizBazmiVenue,
         qizBazmiAddress,
         yandexUrl: body.yandexUrl || 'https://yandex.uz/maps',
@@ -623,6 +631,8 @@ export function createApiApp(): Express {
         eventTitle: typeof body.eventTitle === 'string' ? body.eventTitle : existing.eventTitle,
         eventType: typeof body.eventType === 'string' ? body.eventType : existing.eventType,
         eventDate: typeof body.eventDate === 'string' ? body.eventDate : existing.eventDate,
+        eventShowTime:
+          typeof body.eventShowTime === 'boolean' ? body.eventShowTime : existing.eventShowTime,
         venueName: typeof body.venueName === 'string' ? body.venueName : existing.venueName,
         locationAddress:
           typeof body.locationAddress === 'string'
@@ -636,6 +646,10 @@ export function createApiApp(): Express {
           typeof body.qizBazmiDate === 'string' && body.qizBazmiDate.trim()
             ? body.qizBazmiDate
             : existing.qizBazmiDate,
+        qizBazmiShowTime:
+          typeof body.qizBazmiShowTime === 'boolean'
+            ? body.qizBazmiShowTime
+            : existing.qizBazmiShowTime,
         qizBazmiVenue:
           typeof body.qizBazmiVenue === 'string' ? body.qizBazmiVenue : existing.qizBazmiVenue,
         qizBazmiAddress:

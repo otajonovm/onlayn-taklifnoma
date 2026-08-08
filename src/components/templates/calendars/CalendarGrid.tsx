@@ -7,6 +7,8 @@ import { BRAND } from '@/config/themes';
 export interface CalendarVariantProps {
   eventDate: string;
   eventTitle: string;
+  /** false bo‘lsa soat ko‘rsatilmaydi */
+  showTime?: boolean;
   venueName?: string;
   locationAddress?: string;
   accentColor?: string;
@@ -20,6 +22,7 @@ export interface CalendarVariantProps {
     date: string;
     title: string;
     venueName?: string;
+    showTime?: boolean;
   };
 }
 
@@ -216,6 +219,7 @@ function MonthGrid({
 export const CalendarGrid: React.FC<CalendarVariantProps> = ({
   eventDate,
   eventTitle,
+  showTime = true,
   venueName = 'Tantanalar Saroyi',
   locationAddress = 'Toshkent sh.',
   accentColor = BRAND.accent,
@@ -244,8 +248,10 @@ export const CalendarGrid: React.FC<CalendarVariantProps> = ({
 
   const primary = parseDate(eventDate);
   const secondary = secondaryEvent?.date ? parseDate(secondaryEvent.date) : null;
-  const primaryTime = fmtTime(primary);
-  const secondaryTime = secondary ? fmtTime(secondary) : undefined;
+  const secondaryShowTime = secondaryEvent?.showTime !== false;
+  const primaryTime = showTime ? fmtTime(primary) : undefined;
+  const secondaryTime =
+    secondary && secondaryShowTime ? fmtTime(secondary) : undefined;
   const sharedMonth = secondary ? sameMonth(primary, secondary) : true;
 
   return (
@@ -355,10 +361,16 @@ export const CalendarGrid: React.FC<CalendarVariantProps> = ({
             <p className="text-[10px] uppercase tracking-[0.16em]" style={{ color: accentColor }}>
               {eventTitle || "Nikoh To'yi"}
             </p>
-            <p className="text-sm font-serif flex items-center gap-1.5 mt-0.5" style={{ color: textColor }}>
-              <Clock className="w-3.5 h-3.5 shrink-0" style={{ color: accentColor }} />
-              Soat {primaryTime}
-            </p>
+            {primaryTime ? (
+              <p className="text-sm font-serif flex items-center gap-1.5 mt-0.5" style={{ color: textColor }}>
+                <Clock className="w-3.5 h-3.5 shrink-0" style={{ color: accentColor }} />
+                Soat {primaryTime}
+              </p>
+            ) : (
+              <p className="text-sm font-serif mt-0.5" style={{ color: BRAND.muted }}>
+                Vaqt belgilanmagan
+              </p>
+            )}
           </div>
           <p className="text-xs font-serif text-right truncate max-w-[45%]" style={{ color: BRAND.muted }}>
             {venueName}
@@ -370,10 +382,16 @@ export const CalendarGrid: React.FC<CalendarVariantProps> = ({
               <p className="text-[10px] uppercase tracking-[0.16em]" style={{ color: accentColor }}>
                 {secondaryEvent.title}
               </p>
-              <p className="text-sm font-serif flex items-center gap-1.5 mt-0.5" style={{ color: textColor }}>
-                <Clock className="w-3.5 h-3.5 shrink-0" style={{ color: accentColor }} />
-                Soat {secondaryTime}
-              </p>
+              {secondaryTime ? (
+                <p className="text-sm font-serif flex items-center gap-1.5 mt-0.5" style={{ color: textColor }}>
+                  <Clock className="w-3.5 h-3.5 shrink-0" style={{ color: accentColor }} />
+                  Soat {secondaryTime}
+                </p>
+              ) : (
+                <p className="text-sm font-serif mt-0.5" style={{ color: BRAND.muted }}>
+                  Vaqt belgilanmagan
+                </p>
+              )}
             </div>
             {secondaryEvent.venueName && (
               <p className="text-xs font-serif text-right truncate max-w-[45%]" style={{ color: BRAND.muted }}>

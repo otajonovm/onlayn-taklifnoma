@@ -53,6 +53,7 @@ export const WD102Layout: React.FC<WeddingLayoutProps> = ({ data }) => {
     eventTitle,
     eventType,
     eventDate,
+    eventShowTime,
     venueName,
     locationAddress,
     styles,
@@ -139,6 +140,7 @@ export const WD102Layout: React.FC<WeddingLayoutProps> = ({ data }) => {
         >
           <CalendarTypographic
             eventDate={eventDate}
+            showTime={eventShowTime !== false}
             eventTitle={eventTitle}
             venueName={venueName}
             locationAddress={locationAddress}

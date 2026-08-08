@@ -9,6 +9,11 @@ import {
   type InvitationImages,
 } from '@/types/styleTokens';
 import { loadBuilderDraft, saveBuilderDraft, clearBuilderDraft } from '@/lib/builderDraft';
+import {
+  combineDateTimeLocal,
+  splitDateTimeLocal,
+  toStoredIso,
+} from '@/lib/eventDateTime';
 import { DEFAULT_AUDIO_TRACK } from '@/data/audioTracks';
 import { StyleCustomizerPanel } from '@/components/editor/StyleCustomizerPanel';
 import { AudioTrackPicker } from '@/components/editor/AudioTrackPicker';
@@ -69,7 +74,13 @@ export const LiveBuilder: React.FC<LiveBuilderProps> = ({
     initialDraft?.eventTitle ?? "Nikoh To'yi Marosimi"
   );
   const [eventType, setEventType] = useState(initialDraft?.eventType ?? "Nikoh To'yi");
-  const [eventDate, setEventDate] = useState(initialDraft?.eventDate ?? '2026-08-16T18:00');
+  const initialNikoh = splitDateTimeLocal(initialDraft?.eventDate ?? '2026-08-16T18:00');
+  const [eventDateOnly, setEventDateOnly] = useState(initialNikoh.date || '2026-08-16');
+  const [eventTime, setEventTime] = useState(() => {
+    if (initialDraft?.eventShowTime === false) return '';
+    if (typeof initialDraft?.eventTime === 'string') return initialDraft.eventTime;
+    return initialNikoh.time || '18:00';
+  });
   const [venueName, setVenueName] = useState(
     initialDraft?.venueName ?? 'Versal Tantanalar Saroyi'
   );
@@ -80,9 +91,13 @@ export const LiveBuilder: React.FC<LiveBuilderProps> = ({
   const [qizBazmiTitle, setQizBazmiTitle] = useState(
     initialDraft?.qizBazmiTitle ?? 'Qiz bazmi'
   );
-  const [qizBazmiDate, setQizBazmiDate] = useState(
-    initialDraft?.qizBazmiDate ?? '2026-08-15T16:00'
-  );
+  const initialQiz = splitDateTimeLocal(initialDraft?.qizBazmiDate ?? '2026-08-15T16:00');
+  const [qizBazmiDateOnly, setQizBazmiDateOnly] = useState(initialQiz.date || '2026-08-15');
+  const [qizBazmiTime, setQizBazmiTime] = useState(() => {
+    if (initialDraft?.qizBazmiShowTime === false) return '';
+    if (typeof initialDraft?.qizBazmiTime === 'string') return initialDraft.qizBazmiTime;
+    return initialQiz.time || '16:00';
+  });
   const [qizBazmiVenue, setQizBazmiVenue] = useState(
     initialDraft?.qizBazmiVenue ?? ''
   );
@@ -201,11 +216,15 @@ export const LiveBuilder: React.FC<LiveBuilderProps> = ({
     groomName,
     eventTitle,
     eventType,
-    eventDate,
+    eventDate: combineDateTimeLocal(eventDateOnly, eventTime) || eventDateOnly,
+    eventTime,
+    eventShowTime: Boolean(eventTime.trim()),
     venueName,
     locationAddress,
     qizBazmiTitle,
-    qizBazmiDate,
+    qizBazmiDate: combineDateTimeLocal(qizBazmiDateOnly, qizBazmiTime) || qizBazmiDateOnly,
+    qizBazmiTime,
+    qizBazmiShowTime: Boolean(qizBazmiTime.trim()),
     qizBazmiVenue,
     qizBazmiAddress,
     yandexUrl,
@@ -237,11 +256,13 @@ export const LiveBuilder: React.FC<LiveBuilderProps> = ({
     groomName,
     eventTitle,
     eventType,
-    eventDate,
+    eventDateOnly,
+    eventTime,
     venueName,
     locationAddress,
     qizBazmiTitle,
-    qizBazmiDate,
+    qizBazmiDateOnly,
+    qizBazmiTime,
     qizBazmiVenue,
     qizBazmiAddress,
     yandexUrl,
@@ -273,22 +294,26 @@ export const LiveBuilder: React.FC<LiveBuilderProps> = ({
       groomName,
       eventTitle,
       eventType,
-      eventDate: new Date(eventDate).toISOString(),
+      eventDate: toStoredIso(eventDateOnly, eventTime),
+      eventShowTime: Boolean(eventTime.trim()),
       venueName,
       locationAddress,
       qizBazmiTitle: selectedTemplateId === 'WD-101' ? qizBazmiTitle || 'Qiz bazmi' : undefined,
       qizBazmiDate:
         selectedTemplateId === 'WD-101'
-          ? (() => {
-              const parsed = qizBazmiDate?.trim() ? new Date(qizBazmiDate) : null;
-              if (parsed && !Number.isNaN(parsed.getTime())) return parsed.toISOString();
-              const nikoh = new Date(eventDate);
-              if (!Number.isNaN(nikoh.getTime())) {
-                return new Date(nikoh.getTime() - 24 * 60 * 60 * 1000).toISOString();
-              }
-              return new Date().toISOString();
-            })()
+          ? toStoredIso(
+              qizBazmiDateOnly ||
+                (() => {
+                  const d = new Date(`${eventDateOnly}T12:00`);
+                  d.setDate(d.getDate() - 1);
+                  const pad = (n: number) => String(n).padStart(2, '0');
+                  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+                })(),
+              qizBazmiTime
+            )
           : undefined,
+      qizBazmiShowTime:
+        selectedTemplateId === 'WD-101' ? Boolean(qizBazmiTime.trim()) : undefined,
       qizBazmiVenue: selectedTemplateId === 'WD-101' ? qizBazmiVenue : undefined,
       qizBazmiAddress: selectedTemplateId === 'WD-101' ? qizBazmiAddress : undefined,
       yandexUrl,
@@ -317,11 +342,13 @@ export const LiveBuilder: React.FC<LiveBuilderProps> = ({
       brideName,
       eventTitle,
       eventType,
-      eventDate,
+      eventDateOnly,
+      eventTime,
       venueName,
       locationAddress,
       qizBazmiTitle,
-      qizBazmiDate,
+      qizBazmiDateOnly,
+      qizBazmiTime,
       qizBazmiVenue,
       qizBazmiAddress,
       yandexUrl,
@@ -376,17 +403,17 @@ export const LiveBuilder: React.FC<LiveBuilderProps> = ({
       const qizPayload =
         selectedTemplateId === 'WD-101'
           ? (() => {
-              const nikoh = new Date(eventDate);
-              const fallbackQiz = Number.isNaN(nikoh.getTime())
-                ? new Date()
-                : new Date(nikoh.getTime() - 24 * 60 * 60 * 1000);
-              const qizParsed = qizBazmiDate?.trim() ? new Date(qizBazmiDate) : fallbackQiz;
-              const qizIso = Number.isNaN(qizParsed.getTime())
-                ? fallbackQiz.toISOString()
-                : qizParsed.toISOString();
+              let qizDate = qizBazmiDateOnly.trim();
+              if (!qizDate) {
+                const d = new Date(`${eventDateOnly}T12:00`);
+                d.setDate(d.getDate() - 1);
+                const pad = (n: number) => String(n).padStart(2, '0');
+                qizDate = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+              }
               return {
                 qizBazmiTitle: qizBazmiTitle.trim() || 'Qiz bazmi',
-                qizBazmiDate: qizIso,
+                qizBazmiDate: toStoredIso(qizDate, qizBazmiTime),
+                qizBazmiShowTime: Boolean(qizBazmiTime.trim()),
                 qizBazmiVenue: qizBazmiVenue.trim(),
                 qizBazmiAddress: qizBazmiAddress.trim(),
               };
@@ -400,7 +427,8 @@ export const LiveBuilder: React.FC<LiveBuilderProps> = ({
         groomName,
         eventTitle,
         eventType,
-        eventDate: new Date(eventDate).toISOString(),
+        eventDate: toStoredIso(eventDateOnly, eventTime),
+        eventShowTime: Boolean(eventTime.trim()),
         venueName,
         locationAddress,
         ...qizPayload,
@@ -667,18 +695,44 @@ export const LiveBuilder: React.FC<LiveBuilderProps> = ({
                     style={inputStyle}
                   />
                 </div>
-                <div>
-                  <label className="block text-xs font-medium mb-1.5" style={{ color: BRAND.accent }}>
-                    Sana va Vaqt
-                  </label>
-                  <input
-                    type="datetime-local"
-                    required
-                    value={eventDate}
-                    onChange={(e) => setEventDate(e.target.value)}
-                    className={inputClass}
-                    style={inputStyle}
-                  />
+                <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium mb-1.5" style={{ color: BRAND.accent }}>
+                      Nikoh sanasi
+                    </label>
+                    <input
+                      type="date"
+                      required
+                      value={eventDateOnly}
+                      onChange={(e) => setEventDateOnly(e.target.value)}
+                      className={inputClass}
+                      style={inputStyle}
+                    />
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5 gap-2">
+                      <label className="block text-xs font-medium" style={{ color: BRAND.accent }}>
+                        Vaqt (ixtiyoriy)
+                      </label>
+                      {eventTime ? (
+                        <button
+                          type="button"
+                          onClick={() => setEventTime('')}
+                          className="text-[10px] underline cursor-pointer"
+                          style={{ color: BRAND.muted }}
+                        >
+                          Olib tashlash
+                        </button>
+                      ) : null}
+                    </div>
+                    <input
+                      type="time"
+                      value={eventTime}
+                      onChange={(e) => setEventTime(e.target.value)}
+                      className={inputClass}
+                      style={inputStyle}
+                    />
+                  </div>
                 </div>
                 <div>
                   <label className="block text-xs font-medium mb-1.5" style={{ color: BRAND.accent }}>
@@ -755,12 +809,36 @@ export const LiveBuilder: React.FC<LiveBuilderProps> = ({
                         className="block text-xs font-medium mb-1.5"
                         style={{ color: BRAND.accent }}
                       >
-                        Sana va Vaqt
+                        Sana
                       </label>
                       <input
-                        type="datetime-local"
-                        value={qizBazmiDate}
-                        onChange={(e) => setQizBazmiDate(e.target.value)}
+                        type="date"
+                        value={qizBazmiDateOnly}
+                        onChange={(e) => setQizBazmiDateOnly(e.target.value)}
+                        className={inputClass}
+                        style={inputStyle}
+                      />
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5 gap-2">
+                        <label className="block text-xs font-medium" style={{ color: BRAND.accent }}>
+                          Vaqt (ixtiyoriy)
+                        </label>
+                        {qizBazmiTime ? (
+                          <button
+                            type="button"
+                            onClick={() => setQizBazmiTime('')}
+                            className="text-[10px] underline cursor-pointer"
+                            style={{ color: BRAND.muted }}
+                          >
+                            Olib tashlash
+                          </button>
+                        ) : null}
+                      </div>
+                      <input
+                        type="time"
+                        value={qizBazmiTime}
+                        onChange={(e) => setQizBazmiTime(e.target.value)}
                         className={inputClass}
                         style={inputStyle}
                       />

@@ -22,6 +22,7 @@ export const WD103Layout: React.FC<WeddingLayoutProps> = ({ data }) => {
     eventTitle,
     eventType,
     eventDate,
+    eventShowTime,
     venueName,
     locationAddress,
     styles,
@@ -119,6 +120,7 @@ export const WD103Layout: React.FC<WeddingLayoutProps> = ({ data }) => {
         <section className="px-5 sm:px-8 py-8 border-b" style={{ borderColor: 'var(--border-color)' }}>
           <CalendarRibbon
             eventDate={eventDate}
+            showTime={eventShowTime !== false}
             eventTitle={eventTitle}
             venueName={venueName}
             locationAddress={locationAddress}

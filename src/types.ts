@@ -66,11 +66,15 @@ export interface Invitation {
   eventTitle: string;
   eventType: string;
   eventDate: string;
+  /** false bo‘lsa nikoh vaqti ko‘rsatilmaydi (faqat sana) */
+  eventShowTime?: boolean;
   venueName: string;
   locationAddress: string;
   /** WD-101: ikkinchi tadbir — Qiz bazmi */
   qizBazmiTitle?: string;
   qizBazmiDate?: string;
+  /** false bo‘lsa qiz bazmi vaqti ko‘rsatilmaydi */
+  qizBazmiShowTime?: boolean;
   qizBazmiVenue?: string;
   qizBazmiAddress?: string;
   yandexUrl?: string;

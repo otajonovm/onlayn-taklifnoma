@@ -3,6 +3,7 @@ import type { InvitationImages, TemplateStyleOverrides } from '@/types/styleToke
 import { DEFAULT_INVITATION_IMAGES, mergeStyleOverrides } from '@/types/styleTokens';
 import { BRAND } from '@/config/themes';
 import { WEDDING_TEMPLATES } from '@/config/weddingTemplates';
+import { combineDateTimeLocal, splitDateTimeLocal } from '@/lib/eventDateTime';
 
 export const BUILDER_DRAFT_KEY = 'ot_builder_draft_v1';
 
@@ -13,10 +14,15 @@ export interface BuilderDraft {
   eventTitle: string;
   eventType: string;
   eventDate: string;
+  /** Vaqt ko‘rsatilsinmi (bo‘sh time = false) */
+  eventShowTime?: boolean;
+  eventTime?: string;
   venueName: string;
   locationAddress: string;
   qizBazmiTitle?: string;
   qizBazmiDate?: string;
+  qizBazmiShowTime?: boolean;
+  qizBazmiTime?: string;
   qizBazmiVenue?: string;
   qizBazmiAddress?: string;
   yandexUrl: string;
@@ -90,13 +96,23 @@ export function clearBuilderDraft(): void {
 
 /** Previewdan “Tahrirlash” — serverdagi taklifnomani builder qoralamasiga yozadi */
 export function seedBuilderDraftFromInvitation(invitation: Invitation): void {
-  const toLocalInput = (iso?: string, fallback = '2026-08-16T18:00') => {
-    if (!iso) return fallback;
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return fallback;
+  const nikoh = splitDateTimeLocal(invitation.eventDate || '2026-08-16T18:00');
+  const eventShowTime = invitation.eventShowTime !== false;
+  const eventTime = eventShowTime ? nikoh.time || '18:00' : '';
+
+  let qizDate = '';
+  let qizTime = '';
+  if (invitation.qizBazmiDate) {
+    const q = splitDateTimeLocal(invitation.qizBazmiDate);
+    qizDate = q.date;
+    qizTime = invitation.qizBazmiShowTime === false ? '' : q.time || '';
+  } else if (nikoh.date) {
+    const d = new Date(`${nikoh.date}T12:00`);
+    d.setDate(d.getDate() - 1);
     const pad = (n: number) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-  };
+    qizDate = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    qizTime = invitation.qizBazmiShowTime === false ? '' : '16:00';
+  }
 
   saveBuilderDraft({
     selectedTemplateId: invitation.templateId || 'WD-101',
@@ -104,18 +120,15 @@ export function seedBuilderDraftFromInvitation(invitation: Invitation): void {
     groomName: invitation.groomName || '',
     eventTitle: invitation.eventTitle || "Nikoh To'yi Marosimi",
     eventType: invitation.eventType || "Nikoh To'yi",
-    eventDate: toLocalInput(invitation.eventDate),
+    eventDate: combineDateTimeLocal(nikoh.date, eventTime) || nikoh.date,
+    eventTime,
+    eventShowTime: Boolean(eventTime),
     venueName: invitation.venueName || '',
     locationAddress: invitation.locationAddress || '',
     qizBazmiTitle: invitation.qizBazmiTitle || 'Qiz bazmi',
-    qizBazmiDate: invitation.qizBazmiDate
-      ? toLocalInput(invitation.qizBazmiDate, '2026-08-15T16:00')
-      : invitation.eventDate
-        ? toLocalInput(
-            new Date(new Date(invitation.eventDate).getTime() - 24 * 60 * 60 * 1000).toISOString(),
-            '2026-08-15T16:00'
-          )
-        : '2026-08-15T16:00',
+    qizBazmiDate: combineDateTimeLocal(qizDate, qizTime) || qizDate,
+    qizBazmiTime: qizTime,
+    qizBazmiShowTime: Boolean(qizTime),
     qizBazmiVenue: invitation.qizBazmiVenue || '',
     qizBazmiAddress: invitation.qizBazmiAddress || '',
     yandexUrl: invitation.yandexUrl || 'https://yandex.uz/maps',
