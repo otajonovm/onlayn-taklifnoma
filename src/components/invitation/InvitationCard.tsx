@@ -7,7 +7,7 @@ import { ActivationModal } from '../modals/ActivationModal';
 import { GoldParticlesBackground } from '@/components/ui/GoldParticlesBackground';
 import { RevealWords } from './RevealText';
 import { guestShareUrl } from '@/lib/adminAuth';
-import { Sparkles, Share2, CheckCircle2, Lock } from 'lucide-react';
+import { Sparkles, Share2, CheckCircle2, Lock, Pencil } from 'lucide-react';
 import { motion } from 'motion/react';
 import { WEDDING_TEMPLATES } from '@/config/weddingTemplates';
 import { WeddingRenderer, resolveWeddingTemplate } from '../templates/WeddingRenderer';
@@ -16,11 +16,14 @@ interface InvitationCardProps {
   invitation: Invitation;
   onStatusUpdated?: () => void;
   accessMode?: 'preview' | 'guest';
+  onEdit?: () => void;
 }
 
 export const InvitationCard: React.FC<InvitationCardProps> = ({
   invitation,
   onStatusUpdated,
+  accessMode = 'preview',
+  onEdit,
 }) => {
   const [guestName, setGuestName] = useState<string>('');
   const [roleParam, setRoleParam] = useState<string>('');
@@ -70,7 +73,9 @@ export const InvitationCard: React.FC<InvitationCardProps> = ({
     agenda: template.content.agenda
       ? {
           ...template.content.agenda,
-          items: invitation.agenda && invitation.agenda.length > 0 ? invitation.agenda : template.content.agenda.items,
+          items: Array.isArray(invitation.agenda)
+            ? invitation.agenda
+            : template.content.agenda.items,
         }
       : undefined,
   } as const;
@@ -196,7 +201,19 @@ export const InvitationCard: React.FC<InvitationCardProps> = ({
             </h2>
           </div>
 
-          <div className="w-9 shrink-0" aria-hidden />
+          {accessMode === 'preview' && onEdit ? (
+            <button
+              type="button"
+              onClick={onEdit}
+              className="p-2 rounded-full border transition-colors cursor-pointer bg-white/80 shrink-0"
+              style={{ borderColor: BRAND.border, color: BRAND.accent }}
+              title="Tahrirlash"
+            >
+              <Pencil className="w-4 h-4" />
+            </button>
+          ) : (
+            <div className="w-9 shrink-0" aria-hidden />
+          )}
         </div>
 
         {/* Template-specific layout architecture (WD-101 / WD-102 / WD-103) */}

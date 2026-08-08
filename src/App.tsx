@@ -7,6 +7,7 @@ import { AdminDashboard } from './components/admin/AdminDashboard';
 import { ThemeProvider } from './config/ThemeContext';
 import { adminAuthHeaders } from './lib/adminAuth';
 import { Loader2, ArrowLeft, Lock } from 'lucide-react';
+import { seedBuilderDraftFromInvitation } from './lib/builderDraft';
 
 function AppContent() {
   const [currentView, setCurrentView] = useState<'home' | 'builder' | 'invitation' | 'admin'>('home');
@@ -205,6 +206,14 @@ function AppContent() {
             fetchInvitationDetails(activeInvitationId, accessMode);
           }
         }}
+        onEdit={
+          accessMode === 'preview'
+            ? () => {
+                seedBuilderDraftFromInvitation(invitationData);
+                navigateTo('builder', undefined, invitationData.templateId);
+              }
+            : undefined
+        }
       />
     );
   }

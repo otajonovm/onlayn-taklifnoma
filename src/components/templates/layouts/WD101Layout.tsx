@@ -1,5 +1,5 @@
 import React from 'react';
-import { Heart } from 'lucide-react';
+import { Heart, MapPin } from 'lucide-react';
 import type { WeddingLayoutProps } from '../types';
 import { CalendarGrid } from '../calendars/CalendarGrid';
 import { AgendaTimeline } from '@/components/invitation/AgendaTimeline';
@@ -8,6 +8,50 @@ import { RsvpSection } from '@/components/invitation/RsvpSection';
 import { UzbekCountdown } from '@/components/invitation/UzbekCountdown';
 import { RevealWords, DrawLine } from '@/components/invitation/RevealText';
 import { OrnamentDivider } from '@/components/ui/ornaments';
+
+const MONTHS_UZ = [
+  'Yanvar',
+  'Fevral',
+  'Mart',
+  'Aprel',
+  'May',
+  'Iyun',
+  'Iyul',
+  'Avgust',
+  'Sentabr',
+  'Oktabr',
+  'Noyabr',
+  'Dekabr',
+] as const;
+
+const WEEKDAYS_UZ = [
+  'Yakshanba',
+  'Dushanba',
+  'Seshanba',
+  'Chorshanba',
+  'Payshanba',
+  'Juma',
+  'Shanba',
+] as const;
+
+/** To‘liq o‘zbek oy/kun nomi — Intl ba’zan "M08" qaytaradi */
+function formatEventWhen(iso?: string, monthNames?: string[]): string {
+  if (!iso) return '';
+  try {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return iso;
+    const months = monthNames && monthNames.length >= 12 ? monthNames : [...MONTHS_UZ];
+    const weekday = WEEKDAYS_UZ[d.getDay()];
+    const day = d.getDate();
+    const month = months[d.getMonth()] || MONTHS_UZ[d.getMonth()];
+    const year = d.getFullYear();
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    return `${weekday}, ${day}-${month} ${year}, ${hh}:${mm}`;
+  } catch {
+    return iso;
+  }
+}
 
 /**
  * WD-101 — Symmetric Classical Frame
@@ -23,6 +67,10 @@ export const WD101Layout: React.FC<WeddingLayoutProps> = ({ data }) => {
     eventDate,
     venueName,
     locationAddress,
+    qizBazmiTitle,
+    qizBazmiDate,
+    qizBazmiVenue,
+    qizBazmiAddress,
     styles,
     content,
   } = data;
@@ -30,6 +78,26 @@ export const WD101Layout: React.FC<WeddingLayoutProps> = ({ data }) => {
   const accent = 'var(--accent-color)';
   const text = 'var(--text-primary)';
   const muted = 'var(--text-secondary)';
+
+  const showQizBazmi = Boolean(qizBazmiDate || qizBazmiVenue || qizBazmiAddress);
+  const eventRows = [
+    {
+      key: 'nikoh',
+      title: eventType || eventTitle || "Nikoh To'yi",
+      when: formatEventWhen(eventDate, content.calendar.monthNamesUz),
+      place: [venueName, locationAddress].filter(Boolean).join(' · '),
+    },
+    ...(showQizBazmi
+      ? [
+          {
+            key: 'qiz-bazmi',
+            title: qizBazmiTitle?.trim() || 'Qiz bazmi',
+            when: formatEventWhen(qizBazmiDate, content.calendar.monthNamesUz),
+            place: [qizBazmiVenue, qizBazmiAddress].filter(Boolean).join(' · '),
+          },
+        ]
+      : []),
+  ];
 
   return (
     <div
@@ -86,9 +154,33 @@ export const WD101Layout: React.FC<WeddingLayoutProps> = ({ data }) => {
 
           <DrawLine color={styles.colorAccent} className="mx-auto w-12" delay={0.2} />
 
-          <p className="text-xs uppercase tracking-widest" style={{ color: accent }}>
-            {eventType}
-          </p>
+          {/* Asosiy sarlavha — ikkala tadbir birdaniga ko‘rinsin */}
+          <div className="space-y-2 px-1">
+            <p
+              className="text-xs sm:text-sm uppercase tracking-[0.18em] leading-relaxed"
+              style={{ color: accent }}
+            >
+              {showQizBazmi
+                ? `${eventType || "Nikoh To'yi"}  ·  ${qizBazmiTitle?.trim() || 'Qiz bazmi'}`
+                : eventType}
+            </p>
+            {showQizBazmi && (
+              <div className="pt-1 space-y-1.5 text-[11px] sm:text-xs leading-snug" style={{ color: muted }}>
+                <p>
+                  <span className="font-medium" style={{ color: text }}>
+                    {eventType || "Nikoh To'yi"}
+                  </span>
+                  {eventRows[0]?.when ? ` — ${eventRows[0].when}` : ''}
+                </p>
+                <p>
+                  <span className="font-medium" style={{ color: text }}>
+                    {qizBazmiTitle?.trim() || 'Qiz bazmi'}
+                  </span>
+                  {eventRows[1]?.when ? ` — ${eventRows[1].when}` : ''}
+                </p>
+              </div>
+            )}
+          </div>
           <OrnamentDivider className="w-28 h-auto mx-auto" color={styles.colorAccent} />
 
           {content.quote?.text && (
@@ -121,7 +213,7 @@ export const WD101Layout: React.FC<WeddingLayoutProps> = ({ data }) => {
         >
           <CalendarGrid
             eventDate={eventDate}
-            eventTitle={eventTitle}
+            eventTitle={eventType || eventTitle || "Nikoh To'yi"}
             venueName={venueName}
             locationAddress={locationAddress}
             accentColor={styles.colorAccent}
@@ -130,6 +222,15 @@ export const WD101Layout: React.FC<WeddingLayoutProps> = ({ data }) => {
             dayTouchedLabel={content.calendar.dayTouchedLabel}
             monthNamesUz={content.calendar.monthNamesUz}
             daysOfWeekUz={content.calendar.daysOfWeekUz}
+            secondaryEvent={
+              qizBazmiDate
+                ? {
+                    date: qizBazmiDate,
+                    title: qizBazmiTitle?.trim() || 'Qiz bazmi',
+                    venueName: qizBazmiVenue || undefined,
+                  }
+                : undefined
+            }
           />
         </section>
 
@@ -145,13 +246,60 @@ export const WD101Layout: React.FC<WeddingLayoutProps> = ({ data }) => {
           />
         </section>
 
-        <section className="relative z-10 mt-8">
-          <AgendaTimeline
-            agenda={data.agenda}
-            accentColor={styles.colorAccent}
-            textColor={styles.colorTextPrimary}
-            headerLabel={content.agenda?.headerText}
-          />
+        {data.agenda.length > 0 && (
+          <section className="relative z-10 mt-8">
+            <AgendaTimeline
+              agenda={data.agenda}
+              accentColor={styles.colorAccent}
+              textColor={styles.colorTextPrimary}
+              headerLabel={content.agenda?.headerText}
+            />
+          </section>
+        )}
+
+        {/* Tadbirlar — Nikoh + Qiz bazmi (bitta lista) */}
+        <section
+          className="relative z-10 mt-8 pt-6 border-t text-left"
+          style={{ borderColor: 'var(--border-color)' }}
+        >
+          <p
+            className="text-[11px] uppercase tracking-[0.28em] text-center mb-5"
+            style={{ color: accent }}
+          >
+            Tadbirlar
+          </p>
+          <ul className="space-y-0">
+            {eventRows.map((row, idx) => (
+              <li
+                key={row.key}
+                className="py-4"
+                style={{
+                  borderTop: idx === 0 ? undefined : '1px solid var(--border-color)',
+                }}
+              >
+                <p
+                  className="text-sm uppercase tracking-[0.18em] mb-1.5 ds-font-header"
+                  style={{ color: accent }}
+                >
+                  {row.title}
+                </p>
+                {row.when && (
+                  <p className="text-sm leading-snug ds-font-header" style={{ color: text }}>
+                    {row.when}
+                  </p>
+                )}
+                {row.place && (
+                  <p
+                    className="mt-1.5 text-xs leading-relaxed flex items-start gap-1.5"
+                    style={{ color: muted }}
+                  >
+                    <MapPin className="w-3.5 h-3.5 shrink-0 mt-0.5" style={{ color: accent }} />
+                    <span>{row.place}</span>
+                  </p>
+                )}
+              </li>
+            ))}
+          </ul>
         </section>
 
         <section className="relative z-10 mt-8">

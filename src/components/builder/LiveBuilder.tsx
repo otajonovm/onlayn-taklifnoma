@@ -8,11 +8,7 @@ import {
   type TemplateStyleOverrides,
   type InvitationImages,
 } from '@/types/styleTokens';
-import {
-  loadBuilderDraft,
-  saveBuilderDraft,
-  clearBuilderDraft,
-} from '@/lib/builderDraft';
+import { loadBuilderDraft, saveBuilderDraft, clearBuilderDraft } from '@/lib/builderDraft';
 import { DEFAULT_AUDIO_TRACK } from '@/data/audioTracks';
 import { StyleCustomizerPanel } from '@/components/editor/StyleCustomizerPanel';
 import { AudioTrackPicker } from '@/components/editor/AudioTrackPicker';
@@ -38,18 +34,34 @@ export const LiveBuilder: React.FC<LiveBuilderProps> = ({
   initialTemplateId,
 }) => {
   const templateIds = Object.keys(WEDDING_TEMPLATES);
-  // Home andozadan kelganda draftni e’tiborsiz qoldiramiz — tanlangan shablon ochiladi
-  const initialDraft = useMemo(() => {
-    if (initialTemplateId && WEDDING_TEMPLATES[initialTemplateId]) return null;
-    return getInitialDraft();
-  }, [initialTemplateId]);
+  // Har doim localStorage qoralamasini tiklaymiz (orqaga qaytganda ma’lumot yo‘qolmasin)
+  const initialDraft = useMemo(() => getInitialDraft(), []);
+
+  const switchingTemplateFromHome = Boolean(
+    initialTemplateId &&
+      WEDDING_TEMPLATES[initialTemplateId] &&
+      initialDraft &&
+      initialDraft.selectedTemplateId !== initialTemplateId
+  );
 
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>(() => {
+    // Home’dan boshqa andoza tanlanganda — yangi shablon
+    if (switchingTemplateFromHome && initialTemplateId) {
+      return initialTemplateId;
+    }
+    // Qoralama bor bo‘lsa — undan davom etamiz
+    if (initialDraft?.selectedTemplateId && WEDDING_TEMPLATES[initialDraft.selectedTemplateId]) {
+      return initialDraft.selectedTemplateId;
+    }
     if (initialTemplateId && WEDDING_TEMPLATES[initialTemplateId]) {
       return initialTemplateId;
     }
-    return initialDraft?.selectedTemplateId || templateIds[0];
+    return templateIds[0];
   });
+
+  const [createdInvitationId, setCreatedInvitationId] = useState<string | null>(
+    initialDraft?.createdInvitationId ?? null
+  );
 
   const [brideName, setBrideName] = useState(initialDraft?.brideName ?? 'Nigora');
   const [groomName, setGroomName] = useState(initialDraft?.groomName ?? 'Alisher');
@@ -64,6 +76,18 @@ export const LiveBuilder: React.FC<LiveBuilderProps> = ({
   const [locationAddress, setLocationAddress] = useState(
     initialDraft?.locationAddress ??
       "Toshkent shahri, Yunusobod tumani, Amir Temur ko'chasi 102"
+  );
+  const [qizBazmiTitle, setQizBazmiTitle] = useState(
+    initialDraft?.qizBazmiTitle ?? 'Qiz bazmi'
+  );
+  const [qizBazmiDate, setQizBazmiDate] = useState(
+    initialDraft?.qizBazmiDate ?? '2026-08-15T16:00'
+  );
+  const [qizBazmiVenue, setQizBazmiVenue] = useState(
+    initialDraft?.qizBazmiVenue ?? ''
+  );
+  const [qizBazmiAddress, setQizBazmiAddress] = useState(
+    initialDraft?.qizBazmiAddress ?? ''
   );
   const [yandexUrl, setYandexUrl] = useState(
     initialDraft?.yandexUrl ?? 'https://yandex.uz/maps'
@@ -151,7 +175,8 @@ export const LiveBuilder: React.FC<LiveBuilderProps> = ({
   const [draftSavedAt, setDraftSavedAt] = useState<string | null>(
     initialDraft?.savedAt ?? null
   );
-  const skipTemplateReset = useRef(Boolean(initialDraft));
+  // Qoralama tiklanganda (yoki bir xil shablon) style/image reset qilmaymiz
+  const skipTemplateReset = useRef(Boolean(initialDraft) && !switchingTemplateFromHome);
 
   // Reset styles + images + audio to template defaults when user switches template
   useEffect(() => {
@@ -170,35 +195,7 @@ export const LiveBuilder: React.FC<LiveBuilderProps> = ({
     setAudioTitle(t.media.audioTitle);
   }, [selectedTemplateId]);
 
-  // Autosave qoralama (localStorage)
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      saveBuilderDraft({
-        selectedTemplateId,
-        brideName,
-        groomName,
-        eventTitle,
-        eventType,
-        eventDate,
-        venueName,
-        locationAddress,
-        yandexUrl,
-        googleUrl,
-        twoGisUrl,
-        telegramChatId,
-        agenda,
-        dressCodeTitle,
-        dressCodeDesc,
-        dressCodeColors,
-        styleOverrides,
-        images,
-        audioUrl,
-        audioTitle,
-      });
-      setDraftSavedAt(new Date().toISOString());
-    }, 500);
-    return () => window.clearTimeout(timer);
-  }, [
+  const buildDraftPayload = () => ({
     selectedTemplateId,
     brideName,
     groomName,
@@ -207,6 +204,10 @@ export const LiveBuilder: React.FC<LiveBuilderProps> = ({
     eventDate,
     venueName,
     locationAddress,
+    qizBazmiTitle,
+    qizBazmiDate,
+    qizBazmiVenue,
+    qizBazmiAddress,
     yandexUrl,
     googleUrl,
     twoGisUrl,
@@ -219,6 +220,43 @@ export const LiveBuilder: React.FC<LiveBuilderProps> = ({
     images,
     audioUrl,
     audioTitle,
+    createdInvitationId: createdInvitationId || undefined,
+  });
+
+  // Autosave qoralama (localStorage)
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      saveBuilderDraft(buildDraftPayload());
+      setDraftSavedAt(new Date().toISOString());
+    }, 500);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- buildDraftPayload fields listed below
+  }, [
+    selectedTemplateId,
+    brideName,
+    groomName,
+    eventTitle,
+    eventType,
+    eventDate,
+    venueName,
+    locationAddress,
+    qizBazmiTitle,
+    qizBazmiDate,
+    qizBazmiVenue,
+    qizBazmiAddress,
+    yandexUrl,
+    googleUrl,
+    twoGisUrl,
+    telegramChatId,
+    agenda,
+    dressCodeTitle,
+    dressCodeDesc,
+    dressCodeColors,
+    styleOverrides,
+    images,
+    audioUrl,
+    audioTitle,
+    createdInvitationId,
   ]);
 
   const handleStyleChange = (partial: Partial<TemplateStyleOverrides>) => {
@@ -238,6 +276,21 @@ export const LiveBuilder: React.FC<LiveBuilderProps> = ({
       eventDate: new Date(eventDate).toISOString(),
       venueName,
       locationAddress,
+      qizBazmiTitle: selectedTemplateId === 'WD-101' ? qizBazmiTitle || 'Qiz bazmi' : undefined,
+      qizBazmiDate:
+        selectedTemplateId === 'WD-101'
+          ? (() => {
+              const parsed = qizBazmiDate?.trim() ? new Date(qizBazmiDate) : null;
+              if (parsed && !Number.isNaN(parsed.getTime())) return parsed.toISOString();
+              const nikoh = new Date(eventDate);
+              if (!Number.isNaN(nikoh.getTime())) {
+                return new Date(nikoh.getTime() - 24 * 60 * 60 * 1000).toISOString();
+              }
+              return new Date().toISOString();
+            })()
+          : undefined,
+      qizBazmiVenue: selectedTemplateId === 'WD-101' ? qizBazmiVenue : undefined,
+      qizBazmiAddress: selectedTemplateId === 'WD-101' ? qizBazmiAddress : undefined,
       yandexUrl,
       googleUrl,
       twoGisUrl,
@@ -267,6 +320,10 @@ export const LiveBuilder: React.FC<LiveBuilderProps> = ({
       eventDate,
       venueName,
       locationAddress,
+      qizBazmiTitle,
+      qizBazmiDate,
+      qizBazmiVenue,
+      qizBazmiAddress,
       yandexUrl,
       googleUrl,
       twoGisUrl,
@@ -315,6 +372,27 @@ export const LiveBuilder: React.FC<LiveBuilderProps> = ({
         );
       }
 
+      // WD-101: Qiz bazmi majburiy saqlansin (bo‘sh sana bo‘lsa nikohdan 1 kun oldin)
+      const qizPayload =
+        selectedTemplateId === 'WD-101'
+          ? (() => {
+              const nikoh = new Date(eventDate);
+              const fallbackQiz = Number.isNaN(nikoh.getTime())
+                ? new Date()
+                : new Date(nikoh.getTime() - 24 * 60 * 60 * 1000);
+              const qizParsed = qizBazmiDate?.trim() ? new Date(qizBazmiDate) : fallbackQiz;
+              const qizIso = Number.isNaN(qizParsed.getTime())
+                ? fallbackQiz.toISOString()
+                : qizParsed.toISOString();
+              return {
+                qizBazmiTitle: qizBazmiTitle.trim() || 'Qiz bazmi',
+                qizBazmiDate: qizIso,
+                qizBazmiVenue: qizBazmiVenue.trim(),
+                qizBazmiAddress: qizBazmiAddress.trim(),
+              };
+            })()
+          : {};
+
       const payload = {
         templateId: selectedTemplateId,
         hostName: `${groomName} va ${brideName}`,
@@ -325,6 +403,7 @@ export const LiveBuilder: React.FC<LiveBuilderProps> = ({
         eventDate: new Date(eventDate).toISOString(),
         venueName,
         locationAddress,
+        ...qizPayload,
         yandexUrl,
         googleUrl,
         twoGisUrl,
@@ -342,30 +421,58 @@ export const LiveBuilder: React.FC<LiveBuilderProps> = ({
         venueImage: safeVenue || undefined,
       };
 
-      const res = await fetch('/api/invitations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+      // Oxirgi o‘zgarishlar localStorage’ga darhol yozilsin (orqaga qaytganda yo‘qolmasin)
+      saveBuilderDraft(buildDraftPayload());
 
-      const text = await res.text();
-      let data: { success?: boolean; data?: { id: string }; message?: string };
-      try {
-        data = text ? JSON.parse(text) : {};
-      } catch {
-        throw new Error(
-          res.status === 413 || res.status === 502
-            ? 'Rasm/so‘rov juda katta. Shablon rasmlardan foydalaning.'
-            : res.status === 404
-              ? 'API topilmadi (404). DigitalOcean URL dan foydalanayotganingizni tekshiring.'
-              : `Server javob bermadi (HTTP ${res.status}).`
-        );
+      const parseApi = (text: string, status: number) => {
+        try {
+          return text ? JSON.parse(text) : {};
+        } catch {
+          throw new Error(
+            status === 413 || status === 502
+              ? 'Rasm/so‘rov juda katta. Shablon rasmlardan foydalaning.'
+              : status === 404
+                ? 'API topilmadi (404). DigitalOcean URL dan foydalanayotganingizni tekshiring.'
+                : `Server javob bermadi (HTTP ${status}).`
+          );
+        }
+      };
+
+      let updatingId = createdInvitationId;
+      let res = await fetch(
+        updatingId ? `/api/invitations/${updatingId}` : '/api/invitations',
+        {
+          method: updatingId ? 'PUT' : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        }
+      );
+      let data: { success?: boolean; data?: { id: string }; message?: string } = parseApi(
+        await res.text(),
+        res.status
+      );
+
+      // Eski ID topilmasa — yangisini yaratamiz
+      if (updatingId && (res.status === 404 || !data.success)) {
+        setCreatedInvitationId(null);
+        updatingId = null;
+        res = await fetch('/api/invitations', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        data = parseApi(await res.text(), res.status);
       }
 
       if (data.success && data.data?.id) {
-        clearBuilderDraft();
-        setDraftSavedAt(null);
-        onInvitationCreated(data.data.id);
+        const id = data.data.id;
+        setCreatedInvitationId(id);
+        saveBuilderDraft({
+          ...buildDraftPayload(),
+          createdInvitationId: id,
+        });
+        setDraftSavedAt(new Date().toISOString());
+        onInvitationCreated(id);
       } else {
         throw new Error(data.message || 'Taklifnoma yaratilmadi');
       }
@@ -406,10 +513,32 @@ export const LiveBuilder: React.FC<LiveBuilderProps> = ({
               {draftSavedAt && (
                 <p className="text-xs mt-1" style={{ color: BRAND.muted }}>
                   Qoralama avtomatik saqlandi
+                  {createdInvitationId ? ` · #${createdInvitationId}` : ''}
                 </p>
               )}
             </div>
           </div>
+          {createdInvitationId && (
+            <button
+              type="button"
+              onClick={() => {
+                if (
+                  !window.confirm(
+                    'Yangi taklifnoma boshlanadi. Joriy qoralama tozalanadi. Davom etasizmi?'
+                  )
+                ) {
+                  return;
+                }
+                clearBuilderDraft();
+                setCreatedInvitationId(null);
+                window.location.href = '/builder';
+              }}
+              className="text-xs px-3 py-2 rounded-lg border cursor-pointer hover:bg-white"
+              style={{ borderColor: BRAND.border, color: BRAND.muted }}
+            >
+              Yangi taklifnoma
+            </button>
+          )}
         </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 items-start">
@@ -590,6 +719,87 @@ export const LiveBuilder: React.FC<LiveBuilderProps> = ({
                   />
                 </div>
               </div>
+
+              {selectedTemplateId === 'WD-101' && (
+                <div
+                  className="p-5 rounded-xl border bg-white space-y-4"
+                  style={{ borderColor: BRAND.borderAccent }}
+                >
+                  <div>
+                    <h3 className="font-serif" style={{ color: BRAND.text }}>
+                      Qiz bazmi
+                    </h3>
+                    <p className="text-xs mt-1" style={{ color: BRAND.muted }}>
+                      Nikoh bilan birga taklifnomada alohida qator bo‘lib chiqadi.
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label
+                        className="block text-xs font-medium mb-1.5"
+                        style={{ color: BRAND.accent }}
+                      >
+                        Tadbir nomi
+                      </label>
+                      <input
+                        type="text"
+                        value={qizBazmiTitle}
+                        onChange={(e) => setQizBazmiTitle(e.target.value)}
+                        className={inputClass}
+                        style={inputStyle}
+                        placeholder="Qiz bazmi"
+                      />
+                    </div>
+                    <div>
+                      <label
+                        className="block text-xs font-medium mb-1.5"
+                        style={{ color: BRAND.accent }}
+                      >
+                        Sana va Vaqt
+                      </label>
+                      <input
+                        type="datetime-local"
+                        value={qizBazmiDate}
+                        onChange={(e) => setQizBazmiDate(e.target.value)}
+                        className={inputClass}
+                        style={inputStyle}
+                      />
+                    </div>
+                    <div>
+                      <label
+                        className="block text-xs font-medium mb-1.5"
+                        style={{ color: BRAND.accent }}
+                      >
+                        Joy nomi
+                      </label>
+                      <input
+                        type="text"
+                        value={qizBazmiVenue}
+                        onChange={(e) => setQizBazmiVenue(e.target.value)}
+                        className={inputClass}
+                        style={inputStyle}
+                        placeholder="Masalan: Oilaviy hovli"
+                      />
+                    </div>
+                    <div>
+                      <label
+                        className="block text-xs font-medium mb-1.5"
+                        style={{ color: BRAND.accent }}
+                      >
+                        Manzil
+                      </label>
+                      <input
+                        type="text"
+                        value={qizBazmiAddress}
+                        onChange={(e) => setQizBazmiAddress(e.target.value)}
+                        className={inputClass}
+                        style={inputStyle}
+                        placeholder="Manzil"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="p-5 rounded-xl border bg-white space-y-3" style={{ borderColor: BRAND.borderAccent }}>
                 <div className="flex items-center justify-between">

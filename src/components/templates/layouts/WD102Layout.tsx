@@ -162,26 +162,27 @@ export const WD102Layout: React.FC<WeddingLayoutProps> = ({ data }) => {
         />
       </section>
 
-      {/* Overlapping glass — agenda */}
-      <section className="relative z-10 px-4 sm:px-6 mt-6">
-        <div
-          className="rounded-2xl border p-5 sm:p-6 backdrop-blur-md"
-          style={{
-            backgroundColor: 'color-mix(in srgb, var(--card-bg) 80%, transparent)',
-            borderColor: 'var(--border-color)',
-            boxShadow: '0 12px 32px rgba(15,23,42,0.05)',
-            transform: 'translateX(4px)',
-            borderRadius: 'var(--border-radius)',
-          }}
-        >
-          <AgendaTimeline
-            agenda={data.agenda}
-            accentColor={accent}
-            textColor={text}
-            headerLabel={content.agenda?.headerText}
-          />
-        </div>
-      </section>
+      {data.agenda.length > 0 && (
+        <section className="relative z-10 px-4 sm:px-6 mt-6">
+          <div
+            className="rounded-2xl border p-5 sm:p-6 backdrop-blur-md"
+            style={{
+              backgroundColor: 'color-mix(in srgb, var(--card-bg) 80%, transparent)',
+              borderColor: 'var(--border-color)',
+              boxShadow: '0 12px 32px rgba(15,23,42,0.05)',
+              transform: 'translateX(4px)',
+              borderRadius: 'var(--border-radius)',
+            }}
+          >
+            <AgendaTimeline
+              agenda={data.agenda}
+              accentColor={accent}
+              textColor={text}
+              headerLabel={content.agenda?.headerText}
+            />
+          </div>
+        </section>
+      )}
 
       <section
         className="relative z-10 px-4 sm:px-6 mt-6"

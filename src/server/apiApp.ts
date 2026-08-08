@@ -352,6 +352,33 @@ export function createApiApp(): Express {
       const safeTemplateId = WEDDING_TEMPLATES[requestedTemplateId] ? requestedTemplateId : 'WD-101';
       const template = WEDDING_TEMPLATES[safeTemplateId];
 
+      const eventDateIso =
+        typeof body.eventDate === 'string' && body.eventDate
+          ? body.eventDate
+          : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
+      // WD-101 da Qiz bazmi har doim saqlansin
+      let qizBazmiTitle: string | undefined;
+      let qizBazmiDate: string | undefined;
+      let qizBazmiVenue: string | undefined;
+      let qizBazmiAddress: string | undefined;
+      if (safeTemplateId === 'WD-101') {
+        qizBazmiTitle =
+          typeof body.qizBazmiTitle === 'string' && body.qizBazmiTitle.trim()
+            ? body.qizBazmiTitle.trim()
+            : 'Qiz bazmi';
+        if (typeof body.qizBazmiDate === 'string' && body.qizBazmiDate.trim()) {
+          qizBazmiDate = body.qizBazmiDate;
+        } else {
+          const nikoh = new Date(eventDateIso);
+          qizBazmiDate = Number.isNaN(nikoh.getTime())
+            ? new Date().toISOString()
+            : new Date(nikoh.getTime() - 24 * 60 * 60 * 1000).toISOString();
+        }
+        qizBazmiVenue = typeof body.qizBazmiVenue === 'string' ? body.qizBazmiVenue : '';
+        qizBazmiAddress = typeof body.qizBazmiAddress === 'string' ? body.qizBazmiAddress : '';
+      }
+
       const newInvitation: Invitation = {
         id: newId,
         templateId: safeTemplateId,
@@ -361,9 +388,13 @@ export function createApiApp(): Express {
         groomName: body.groomName || '',
         eventTitle: body.eventTitle || "Nikoh To'yi Marosimi",
         eventType: body.eventType || "Nikoh To'yi",
-        eventDate: body.eventDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        eventDate: eventDateIso,
         venueName: body.venueName || 'Tantanalar Saroyi',
         locationAddress: body.locationAddress || 'Toshkent shahri',
+        qizBazmiTitle,
+        qizBazmiDate,
+        qizBazmiVenue,
+        qizBazmiAddress,
         yandexUrl: body.yandexUrl || 'https://yandex.uz/maps',
         googleUrl: body.googleUrl || 'https://maps.google.com',
         twoGisUrl: body.twoGisUrl || '',
@@ -565,12 +596,22 @@ export function createApiApp(): Express {
     }
   });
 
-  app.put('/api/invitations/:id', requireAdmin, (req, res) => {
+  app.put('/api/invitations/:id', (req, res) => {
     try {
       const id = req.params.id.toUpperCase();
       const existing = invitationsDb().get(id);
       if (!existing) {
         return res.status(404).json({ success: false, message: 'Taklifnoma topilmadi' });
+      }
+
+      const adminToken = extractBearer(req);
+      const isAdmin = !!(adminToken && adminTokens().has(adminToken));
+      // Builder qayta saqlashi: PENDING ni admin siz yangilash mumkin
+      if (existing.status !== 'PENDING' && !isAdmin) {
+        return res.status(403).json({
+          success: false,
+          message: 'Faollashtirilgan taklifnomani faqat admin tahrirlashi mumkin',
+        });
       }
 
       const body = req.body || {};
@@ -587,6 +628,20 @@ export function createApiApp(): Express {
           typeof body.locationAddress === 'string'
             ? body.locationAddress
             : existing.locationAddress,
+        qizBazmiTitle:
+          typeof body.qizBazmiTitle === 'string'
+            ? body.qizBazmiTitle.trim() || 'Qiz bazmi'
+            : existing.qizBazmiTitle,
+        qizBazmiDate:
+          typeof body.qizBazmiDate === 'string' && body.qizBazmiDate.trim()
+            ? body.qizBazmiDate
+            : existing.qizBazmiDate,
+        qizBazmiVenue:
+          typeof body.qizBazmiVenue === 'string' ? body.qizBazmiVenue : existing.qizBazmiVenue,
+        qizBazmiAddress:
+          typeof body.qizBazmiAddress === 'string'
+            ? body.qizBazmiAddress
+            : existing.qizBazmiAddress,
         yandexUrl: typeof body.yandexUrl === 'string' ? body.yandexUrl : existing.yandexUrl,
         googleUrl: typeof body.googleUrl === 'string' ? body.googleUrl : existing.googleUrl,
         twoGisUrl: typeof body.twoGisUrl === 'string' ? body.twoGisUrl : existing.twoGisUrl,

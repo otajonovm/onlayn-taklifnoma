@@ -141,22 +141,24 @@ export const WD103Layout: React.FC<WeddingLayoutProps> = ({ data }) => {
           />
         </section>
 
-        <section className="px-5 sm:px-8 py-8 border-b" style={{ borderColor: 'var(--border-color)' }}>
-          <div className="max-w-lg mx-auto">
-            <p
-              className="text-[10px] uppercase tracking-[0.3em] text-center mb-6 border-y py-2"
-              style={{ color: accent, borderColor: 'var(--border-color)' }}
-            >
-              {content.agenda?.headerText || 'Dastur'}
-            </p>
-            <AgendaTimeline
-              agenda={data.agenda}
-              accentColor={accent}
-              textColor={text}
-              headerLabel={content.agenda?.headerText}
-            />
-          </div>
-        </section>
+        {data.agenda.length > 0 && (
+          <section className="px-5 sm:px-8 py-8 border-b" style={{ borderColor: 'var(--border-color)' }}>
+            <div className="max-w-lg mx-auto">
+              <p
+                className="text-[10px] uppercase tracking-[0.3em] text-center mb-6 border-y py-2"
+                style={{ color: accent, borderColor: 'var(--border-color)' }}
+              >
+                {content.agenda?.headerText || 'Dastur'}
+              </p>
+              <AgendaTimeline
+                agenda={data.agenda}
+                accentColor={accent}
+                textColor={text}
+                headerLabel={content.agenda?.headerText}
+              />
+            </div>
+          </section>
+        )}
 
         <section className="px-5 sm:px-8 py-8 border-b" style={{ borderColor: 'var(--border-color)' }}>
           <LocationNavigator

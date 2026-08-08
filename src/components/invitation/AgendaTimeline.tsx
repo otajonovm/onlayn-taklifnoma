@@ -24,6 +24,8 @@ export const AgendaTimeline: React.FC<AgendaTimelineProps> = ({
   textColor = BRAND.text,
   headerLabel = 'Dastur',
 }) => {
+  // undefined → demo default; [] → bo‘lim yashiriladi (builderda o‘chirilgan)
+  if (Array.isArray(agenda) && agenda.length === 0) return null;
   const displayAgenda = agenda && agenda.length > 0 ? agenda : DEFAULT_WEDDING_AGENDA;
 
   const getIcon = (name?: string) => {

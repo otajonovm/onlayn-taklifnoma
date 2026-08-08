@@ -68,6 +68,11 @@ export interface Invitation {
   eventDate: string;
   venueName: string;
   locationAddress: string;
+  /** WD-101: ikkinchi tadbir — Qiz bazmi */
+  qizBazmiTitle?: string;
+  qizBazmiDate?: string;
+  qizBazmiVenue?: string;
+  qizBazmiAddress?: string;
   yandexUrl?: string;
   googleUrl?: string;
   twoGisUrl?: string;

@@ -18,6 +18,10 @@ export interface WeddingData {
   eventDate: string;
   venueName: string;
   locationAddress: string;
+  qizBazmiTitle?: string;
+  qizBazmiDate?: string;
+  qizBazmiVenue?: string;
+  qizBazmiAddress?: string;
   yandexUrl?: string;
   googleUrl?: string;
   twoGisUrl?: string;
@@ -58,19 +62,22 @@ export function invitationToWeddingData(input: {
       `${content.calendar.eventDate}T${content.calendar.eventTime}:00`,
     venueName: invitation.venueName || content.venue.name,
     locationAddress: invitation.locationAddress || content.venue.address,
+    qizBazmiTitle: invitation.qizBazmiTitle || 'Qiz bazmi',
+    qizBazmiDate: invitation.qizBazmiDate,
+    qizBazmiVenue: invitation.qizBazmiVenue,
+    qizBazmiAddress: invitation.qizBazmiAddress,
     yandexUrl: invitation.yandexUrl || content.venue.yandexNavUrl,
     googleUrl: invitation.googleUrl,
     twoGisUrl: invitation.twoGisUrl,
     telegramChatId: invitation.telegramChatId,
-    agenda:
-      invitation.agenda && invitation.agenda.length > 0
-        ? invitation.agenda
-        : (content.agenda?.items ?? []).map((i) => ({
-            time: i.time,
-            title: i.title,
-            description: i.description,
-            iconName: i.iconName,
-          })),
+    agenda: Array.isArray(invitation.agenda)
+      ? invitation.agenda
+      : (content.agenda?.items ?? []).map((i) => ({
+          time: i.time,
+          title: i.title,
+          description: i.description,
+          iconName: i.iconName,
+        })),
     styles,
     content,
     theme,
