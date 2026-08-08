@@ -643,8 +643,8 @@ export function createApiApp(): Express {
             ? body.qizBazmiTitle.trim() || 'Qiz bazmi'
             : existing.qizBazmiTitle,
         qizBazmiDate:
-          typeof body.qizBazmiDate === 'string' && body.qizBazmiDate.trim()
-            ? body.qizBazmiDate
+          typeof body.qizBazmiDate === 'string'
+            ? body.qizBazmiDate.trim() || undefined
             : existing.qizBazmiDate,
         qizBazmiShowTime:
           typeof body.qizBazmiShowTime === 'boolean'

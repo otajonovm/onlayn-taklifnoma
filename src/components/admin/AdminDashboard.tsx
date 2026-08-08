@@ -25,7 +25,9 @@ import {
   Zap,
   Link2,
   Link2Off,
+  Pencil,
 } from 'lucide-react';
+import { AdminInvitationEditor } from './AdminInvitationEditor';
 
 const ADMIN_UI = {
   emerald: '#0F5132',
@@ -64,6 +66,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [commandInput, setCommandInput] = useState('/activate OT-84920');
   const [commandResult, setCommandResult] = useState<string | null>(null);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [editingInvitation, setEditingInvitation] = useState<Invitation | null>(null);
 
   const fetchData = async () => {
     if (!getAdminToken()) return;
@@ -524,6 +527,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                           <div className="flex items-center justify-end gap-1.5 flex-wrap">
                             <button
                               type="button"
+                              onClick={() => setEditingInvitation(inv)}
+                              className="px-2.5 py-1.5 rounded-lg border text-[11px] font-medium flex items-center gap-1 cursor-pointer"
+                              style={{ borderColor: `${ADMIN_UI.emerald}55`, color: ADMIN_UI.emerald }}
+                              title="Tahrirlash"
+                            >
+                              <Pencil className="w-3 h-3" />
+                              Tahrirlash
+                            </button>
+                            <button
+                              type="button"
                               onClick={() => onSelectInvitation(inv.id)}
                               className="px-2.5 py-1.5 rounded-lg border text-[11px] font-medium flex items-center gap-1 cursor-pointer"
                               style={{ borderColor: ADMIN_UI.border, color: ADMIN_UI.charcoal }}
@@ -578,6 +591,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
         </div>
       </div>
+
+      {editingInvitation && (
+        <AdminInvitationEditor
+          invitation={editingInvitation}
+          onClose={() => setEditingInvitation(null)}
+          onSaved={(next) => {
+            setInvitations((prev) => prev.map((inv) => (inv.id === next.id ? next : inv)));
+            setEditingInvitation(null);
+            setCommandResult(`✅ ${next.id} saqlandi`);
+          }}
+        />
+      )}
     </div>
   );
 };
