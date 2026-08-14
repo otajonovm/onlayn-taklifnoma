@@ -475,13 +475,13 @@ export const LiveBuilder: React.FC<LiveBuilderProps> = ({
           body: JSON.stringify(payload),
         }
       );
-      let data: { success?: boolean; data?: { id: string }; message?: string } = parseApi(
+      let data: { success?: boolean; data?: { id: string }; message?: string; error?: string } = parseApi(
         await res.text(),
         res.status
       );
 
-      // Eski ID topilmasa — yangisini yaratamiz
-      if (updatingId && (res.status === 404 || !data.success)) {
+      // Eski ID topilmasa — yangisini yaratamiz (503/500 da qayta urinmaymiz)
+      if (updatingId && res.status === 404) {
         setCreatedInvitationId(null);
         updatingId = null;
         res = await fetch('/api/invitations', {
@@ -502,7 +502,7 @@ export const LiveBuilder: React.FC<LiveBuilderProps> = ({
         setDraftSavedAt(new Date().toISOString());
         onInvitationCreated(id);
       } else {
-        throw new Error(data.message || 'Taklifnoma yaratilmadi');
+        throw new Error(data.message || data.error || 'Taklifnoma yaratilmadi');
       }
     } catch (err) {
       console.error(err);

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireAdmin, validateAdminToken, extractBearer } from '@lib/auth/admin';
+import { requireDatabase } from '@lib/dbHealth';
 import { getInvitationDTO, updateInvitation } from '@lib/services/invitationService';
 import type { CreateInvitationInput } from '@app-types/invitation';
 
@@ -7,6 +8,11 @@ export async function GET(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const db = await requireDatabase();
+  if (!db.ok) {
+    return NextResponse.json({ success: false, message: db.message }, { status: 503 });
+  }
+
   const { id } = await params;
   const invitation = await getInvitationDTO(id);
   if (!invitation) {
@@ -37,6 +43,11 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const db = await requireDatabase();
+    if (!db.ok) {
+      return NextResponse.json({ success: false, message: db.message }, { status: 503 });
+    }
+
     const { id } = await params;
     const token = extractBearer(req);
     const isAdmin = await validateAdminToken(token);

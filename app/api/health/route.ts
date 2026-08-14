@@ -1,13 +1,19 @@
 import { NextResponse } from 'next/server';
 import { publicAppBaseUrl, getBotUsername, getTelegramBotToken, getTelegramAdminChatId } from '@lib/telegram/notify';
-import { prisma } from '@lib/prisma';
+import { checkDatabaseConnection } from '@lib/dbHealth';
 
 export async function GET() {
-  const count = await prisma.invitation.count().catch(() => 0);
+  const db = await checkDatabaseConnection();
+
   return NextResponse.json({
-    success: true,
-    invitations: count,
+    success: db.connected,
+    invitations: db.invitationCount ?? 0,
     persistence: 'prisma/postgresql',
+    database: {
+      configured: db.configured,
+      connected: db.connected,
+      error: db.error,
+    },
     appUrl: publicAppBaseUrl(),
     telegram: {
       tokenSet: Boolean(getTelegramBotToken()),
