@@ -1,25 +1,36 @@
 {
-  "name": "react-example",
+  "name": "onlayn-taklifnoma",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "engines": {
     "node": "20.x"
   },
   "scripts": {
-    "dev": "tsx server.ts",
+    "dev": "next dev",
+    "dev:legacy": "tsx server.ts",
     "bot": "tsx scripts/telegram-poll.ts",
     "bot:webhook": "tsx scripts/set-webhook.ts",
-    "build": "npm run build:web && npm run build:server",
-    "build:web": "vite build",
-    "build:server": "esbuild server.ts --bundle --platform=node --target=node20 --format=cjs --outfile=dist/server.cjs --packages=external",
-    "start": "node dist/server.cjs",
-    "clean": "rm -rf dist",
+    "build": "prisma generate && next build",
+    "start": "next start",
+    "postinstall": "prisma generate",
+    "db:push": "prisma db push",
+    "db:seed": "tsx prisma/seed.ts",
+    "db:setup": "prisma db push && tsx prisma/seed.ts",
+    "clean": "rm -rf dist .next",
     "lint": "tsc --noEmit"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
+    "@prisma/client": "^6.19.0",
+    "@react-three/drei": "^10.7.8",
+    "@react-three/fiber": "^9.7.0",
+    "@tailwindcss/postcss": "^4.1.14",
     "@tailwindcss/vite": "^4.1.14",
+    "@telegram-apps/sdk-react": "^3.3.9",
     "@tsparticles/react": "^4.3.2",
     "@tsparticles/slim": "^4.3.2",
     "@vercel/node": "^5.9.5",
@@ -29,10 +40,13 @@
     "esbuild": "^0.25.0",
     "express": "^4.21.2",
     "framer-motion": "^13.0.0",
+    "grammy": "^1.45.1",
     "lucide-react": "^0.546.0",
     "motion": "^12.23.24",
+    "next": "^15.5.23",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
+    "three": "^0.185.1",
     "vite": "^6.2.3"
   },
   "devDependencies": {
@@ -41,7 +55,9 @@
     "@types/node": "^22.14.0",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
+    "@types/three": "^0.185.4",
     "autoprefixer": "^10.4.21",
+    "prisma": "^6.19.0",
     "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",
     "typescript": "^5.8.2"

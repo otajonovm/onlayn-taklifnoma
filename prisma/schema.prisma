@@ -1,0 +1,115 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum InvitationStatus {
+  PENDING
+  ACTIVE
+}
+
+enum RsvpStatus {
+  ATTENDING
+  DECLINED
+}
+
+enum TemplateCategory {
+  WEDDING
+  KIDS_SUNNAT
+  EDUCATION
+  CORPORATE
+}
+
+model Template {
+  id           String           @id
+  title        String
+  category     TemplateCategory @default(WEDDING)
+  thumbnail    String
+  isPremium    Boolean          @default(false)
+  defaultTheme Json
+  particleType String?
+  threeDModel  String?
+  invitations  Invitation[]
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+}
+
+model Invitation {
+  id               String           @id
+  templateId       String
+  template         Template         @relation(fields: [templateId], references: [id])
+  status           InvitationStatus @default(PENDING)
+  telegramChatId   String?
+  telegramUserId   String?
+  hostName         String
+  brideName        String?
+  groomName        String?
+  eventTitle       String
+  eventType        String
+  eventDate        DateTime
+  eventShowTime    Boolean          @default(true)
+  venueName        String
+  locationAddress  String
+  qizBazmiTitle    String?
+  qizBazmiDate     DateTime?
+  qizBazmiShowTime Boolean?
+  qizBazmiVenue    String?
+  qizBazmiAddress  String?
+  yandexUrl        String?
+  googleUrl        String?
+  twoGisUrl        String?
+  audioUrl         String?
+  audioTitle       String?
+  agenda           Json             @default("[]")
+  dressCode        Json?
+  customStyles     Json?
+  coverImage       String?
+  venueImage       String?
+  paymentId        String?
+  paidAt           DateTime?
+  rsvps            Rsvp[]
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  @@index([status])
+  @@index([telegramChatId])
+}
+
+model Rsvp {
+  id           String     @id @default(cuid())
+  invitationId String
+  invitation   Invitation @relation(fields: [invitationId], references: [id], onDelete: Cascade)
+  guestName    String
+  role         String?
+  status       RsvpStatus
+  plusOne      Int        @default(0)
+  wishes       String?
+  createdAt    DateTime   @default(now())
+
+  @@index([invitationId])
+}
+
+model AdminSession {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model Payment {
+  id            String   @id @default(cuid())
+  invitationId  String
+  provider      String
+  transactionId String   @unique
+  amount        Int?
+  status        String   @default("PENDING")
+  rawPayload    Json?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([invitationId])
+}

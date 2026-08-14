@@ -11,6 +11,7 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [paletteId, setPaletteIdState] = useState<PaletteId>(() => {
+    if (typeof window === 'undefined') return DEFAULT_PALETTE_ID;
     const saved = localStorage.getItem('onlayn_taklifnoma_palette');
     if (saved && saved in PALETTES) {
       return saved as PaletteId;
@@ -20,7 +21,9 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const setPaletteId = (id: PaletteId) => {
     setPaletteIdState(id);
-    localStorage.setItem('onlayn_taklifnoma_palette', id);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('onlayn_taklifnoma_palette', id);
+    }
   };
 
   const palette = PALETTES[paletteId] || PALETTES[DEFAULT_PALETTE_ID];

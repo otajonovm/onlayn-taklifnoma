@@ -39,7 +39,7 @@ export const TemplatePreviewThumb: React.FC<TemplatePreviewThumbProps> = ({
   const quoteSource = template.content.quote?.source;
   const cover = template.content.hero.coverImage || WEDDING_IMAGES.ceremony;
   const cal = template.content.calendar;
-  const { day, year, month } = parseEventParts(cal.eventDate, cal.monthNamesUz);
+  const { day, year, month } = parseEventParts(cal.eventDate, cal.monthNamesUz ?? []);
   const venue = template.content.venue.name;
 
   // ── WD-101 — ivory classic, double frame, full stack ──

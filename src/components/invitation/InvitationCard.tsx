@@ -11,12 +11,15 @@ import { Sparkles, Share2, CheckCircle2, Lock, Pencil } from 'lucide-react';
 import { motion } from 'motion/react';
 import { WEDDING_TEMPLATES } from '@/config/weddingTemplates';
 import { WeddingRenderer, resolveWeddingTemplate } from '../templates/WeddingRenderer';
+import { ThreeSceneRouter } from '@components/three/ThreeSceneRouter';
 
 interface InvitationCardProps {
   invitation: Invitation;
   onStatusUpdated?: () => void;
   accessMode?: 'preview' | 'guest';
   onEdit?: () => void;
+  initialGuestName?: string;
+  initialRole?: string;
 }
 
 export const InvitationCard: React.FC<InvitationCardProps> = ({
@@ -24,20 +27,23 @@ export const InvitationCard: React.FC<InvitationCardProps> = ({
   onStatusUpdated,
   accessMode = 'preview',
   onEdit,
+  initialGuestName,
+  initialRole,
 }) => {
-  const [guestName, setGuestName] = useState<string>('');
-  const [roleParam, setRoleParam] = useState<string>('');
+  const [guestName, setGuestName] = useState<string>(initialGuestName || '');
+  const [roleParam, setRoleParam] = useState<string>(initialRole || '');
   const [envelopeOpened, setEnvelopeOpened] = useState(false);
   const [copiedShare, setCopiedShare] = useState(false);
   const [shareBlockedHint, setShareBlockedHint] = useState(false);
 
   useEffect(() => {
+    if (initialGuestName) return;
     const params = new URLSearchParams(window.location.search);
     const guest = params.get('guest') || params.get('mehmon');
     const role = params.get('role');
     if (guest) setGuestName(guest);
     if (role) setRoleParam(role);
-  }, []);
+  }, [initialGuestName]);
 
   const template =
     WEDDING_TEMPLATES[invitation.templateId] ||
@@ -215,6 +221,14 @@ export const InvitationCard: React.FC<InvitationCardProps> = ({
             <div className="w-9 shrink-0" aria-hidden />
           )}
         </div>
+
+        {envelopeOpened && (
+          <ThreeSceneRouter
+            category="wedding"
+            accentColor={theme.accentColor}
+            className="h-40 w-full mb-6 rounded-2xl overflow-hidden border border-[#D4AF37]/30"
+          />
+        )}
 
         {/* Template-specific layout architecture (WD-101 / WD-102 / WD-103) */}
         <WeddingRenderer
