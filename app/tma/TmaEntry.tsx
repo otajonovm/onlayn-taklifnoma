@@ -6,6 +6,30 @@ import { retrieveLaunchParams } from '@telegram-apps/sdk-react';
 import { Loader2 } from 'lucide-react';
 import { parseStartParam } from '@lib/telegram/initData';
 
+function readStartParamFromLaunch(): { initData: string; startParam: string } {
+  let initData = '';
+  let startParam = '';
+  try {
+    const launch = retrieveLaunchParams() as Record<string, unknown>;
+    if (typeof launch.initDataRaw === 'string') initData = launch.initDataRaw;
+    if (typeof launch.startParam === 'string') startParam = launch.startParam;
+
+    const initDataObj = launch.initData as { startParam?: string } | undefined;
+    if (!startParam && typeof initDataObj?.startParam === 'string') {
+      startParam = initDataObj.startParam;
+    }
+
+    // Ba’zi klientlar start_param ni initData query ichida beradi
+    if (!startParam && initData) {
+      const fromInit = new URLSearchParams(initData).get('start_param');
+      if (fromInit) startParam = fromInit;
+    }
+  } catch {
+    /* not in TMA */
+  }
+  return { initData, startParam };
+}
+
 export function TmaEntry() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -14,30 +38,26 @@ export function TmaEntry() {
   useEffect(() => {
     (async () => {
       try {
-        let initData = '';
-        let startParam = searchParams.get('startapp') || searchParams.get('tgWebAppStartParam') || '';
+        let startParam =
+          searchParams.get('startapp') ||
+          searchParams.get('tgWebAppStartParam') ||
+          searchParams.get('start_param') ||
+          '';
 
-        try {
-          const launch = retrieveLaunchParams();
-          initData = typeof launch.initDataRaw === 'string' ? launch.initDataRaw : '';
-          startParam =
-            startParam ||
-            (typeof launch.startParam === 'string' ? launch.startParam : '') ||
-            '';
-        } catch {
-          /* not in TMA */
-        }
+        const launch = readStartParamFromLaunch();
+        const initData = launch.initData;
+        startParam = startParam || launch.startParam || '';
 
+        // Auth xato bo‘lsa ham startapp bo‘lsa mehmon sahifasiga o‘tamiz
         if (initData) {
-          const res = await fetch('/api/tma/auth', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ initData }),
-          });
-          const data = await res.json();
-          if (!res.ok) {
-            setError(data.message || 'TMA autentifikatsiya xatosi');
-            return;
+          try {
+            await fetch('/api/tma/auth', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ initData }),
+            });
+          } catch {
+            /* ignore auth network errors for guest open */
           }
         }
 

@@ -62,6 +62,9 @@ export async function handleTelegramUpdate(body: Record<string, unknown>) {
     });
     const hostLink = botStartLink(result.invitation.id);
     const guestTma = tmaDeepLink(result.invitation.id);
+    const tmaWeb = `${tmaEntryUrl()}?startapp=${encodeURIComponent(
+      result.invitation.id.replace(/-/g, '_')
+    )}`;
     await sendTelegramMessage(
       chatIdStr,
       `✅ #${result.invitation.id} faollashtirildi.\n\n` +
@@ -71,8 +74,9 @@ export async function handleTelegramUpdate(body: Record<string, unknown>) {
         buttons: [
           [
             { text: '👤 Mezbon ulash', url: hostLink },
-            { text: '📱 Mini App', web_app: { url: tmaEntryUrl() } },
+            { text: '📱 Mini App', url: guestTma },
           ],
+          [{ text: '📲 Ilova ichida', web_app: { url: tmaWeb } }],
         ],
       }
     );

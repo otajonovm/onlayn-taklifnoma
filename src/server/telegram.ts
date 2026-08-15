@@ -220,10 +220,10 @@ export async function notifyHostLinked(params: {
   invitationId: string;
 }): Promise<TelegramSendResult> {
   const liveUrl = guestPublicUrl(params.invitationId);
-  const tmaUrl = `${publicAppBaseUrl()}/tma`;
-  const botUser = getBotUsername().replace(/^@/, '');
   const startapp = botStartPayload(params.invitationId);
+  const botUser = getBotUsername().replace(/^@/, '');
   const tmaDeep = `https://t.me/${botUser}?startapp=${startapp}`;
+  const tmaWeb = `${publicAppBaseUrl()}/tma?startapp=${encodeURIComponent(startapp)}`;
   const text =
     `🎉 Taklifnomangiz Telegramga ulandi!\n\n` +
     `🆔 #${params.invitationId}\n\n` +
@@ -236,8 +236,9 @@ export async function notifyHostLinked(params: {
     buttons: [
       [
         { text: '🌐 Mehmon sahifasi', url: liveUrl },
-        { text: '📱 Mini App', web_app: { url: tmaUrl } },
+        { text: '📱 Mini App', url: tmaDeep },
       ],
+      [{ text: '📲 Ilova ichida ochish', web_app: { url: tmaWeb } }],
     ],
   });
 }

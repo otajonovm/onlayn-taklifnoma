@@ -29,24 +29,25 @@ export function parseInitDataUser(initData: string): TelegramInitDataUser | null
   }
 }
 
+/**
+ * startapp / start_param → invitationId + ixtiyoriy guestName
+ * Misollar: OT_47284 | OT-47284 | OT_47284_Sardor | OT-47284_Aziza_Karimova
+ */
 export function parseStartParam(startParam?: string | null): {
   invitationId?: string;
   guestName?: string;
 } {
   if (!startParam?.trim()) return {};
-  const raw = startParam.trim().replace(/^#/, '');
-  const parts = raw.split('_');
-  const idPart = parts[0]?.replace(/-/g, '_');
-  if (!idPart) return {};
+  const raw = decodeURIComponent(startParam.trim().replace(/^#/, ''));
 
-  let invitationId = idPart.toUpperCase().replace(/_/g, '-');
-  if (/^OT-?\d+$/.test(invitationId.replace(/-/g, ''))) {
-    invitationId = invitationId.replace(/^OT-?/, 'OT-');
-    if (!invitationId.includes('-')) {
-      invitationId = `OT-${invitationId.replace('OT', '')}`;
-    }
+  const match = raw.match(/^OT[-_]?(\d{4,})(?:[_-](.+))?$/i);
+  if (match) {
+    const guestName = match[2]?.replace(/_/g, ' ').trim() || undefined;
+    return {
+      invitationId: `OT-${match[1]}`,
+      guestName,
+    };
   }
 
-  const guestName = parts.slice(1).join(' ').trim() || undefined;
-  return { invitationId, guestName };
+  return {};
 }
