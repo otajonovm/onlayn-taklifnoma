@@ -164,7 +164,7 @@ export const InvitationCard: React.FC<InvitationCardProps> = ({
               color: canShare ? BRAND.muted : BRAND.accent,
               opacity: canShare ? 1 : 0.85,
             }}
-            title={canShare ? 'Mehmon havolasini nusxalash' : 'Aktivlashdan keyin ochiladi'}
+            title={canShare ? 'Mehmon Mini App havolasini nusxalash' : 'Aktivlashdan keyin ochiladi'}
           >
             {copiedShare ? (
               <CheckCircle2 className="w-4 h-4" style={{ color: BRAND.accent }} />

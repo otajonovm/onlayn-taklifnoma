@@ -204,13 +204,16 @@ export async function notifyAdminActivated(params: {
   }
 
   const link = botStartLink(params.invitationId);
+  const startapp = botStartPayload(params.invitationId);
+  const botUser = getBotUsername().replace(/^@/, '');
+  const guestTma = `https://t.me/${botUser}?startapp=${startapp}`;
   const text =
     `✅ TAKLIFNOMA FAOLLASHTIRILDI!\n\n` +
     `🆔 ID: #${params.invitationId}\n` +
     `👤 Mezbon: ${params.hostName}\n` +
     `💌 Tadbir: ${params.eventTitle}\n\n` +
-    `🔗 Bot Ulanish Linki (Mijozga yuborish uchun):\n` +
-    `${link}`;
+    `🔗 Mezbon ulash:\n${link}\n\n` +
+    `📱 Mehmonlarga Mini App (konvert):\n${guestTma}`;
 
   return sendTelegramMessage(adminChatId, text);
 }
@@ -222,23 +225,24 @@ export async function notifyHostLinked(params: {
   const liveUrl = guestPublicUrl(params.invitationId);
   const startapp = botStartPayload(params.invitationId);
   const botUser = getBotUsername().replace(/^@/, '');
-  const tmaDeep = `https://t.me/${botUser}?startapp=${startapp}`;
+  const short = process.env.NEXT_PUBLIC_TMA_SHORT_NAME?.trim().replace(/^\//, '');
+  const tmaDeep = short
+    ? `https://t.me/${botUser}/${short}?startapp=${startapp}`
+    : `https://t.me/${botUser}?startapp=${startapp}`;
   const tmaWeb = `${publicAppBaseUrl()}/tma?startapp=${encodeURIComponent(startapp)}`;
   const text =
     `🎉 Taklifnomangiz Telegramga ulandi!\n\n` +
     `🆔 #${params.invitationId}\n\n` +
-    `🌐 Jonli havola (mehmonlarga yuboring):\n` +
-    `${liveUrl}\n\n` +
-    `📱 Mini App havola:\n${tmaDeep}\n\n` +
+    `📱 Mehmonlarga SHU havolani yuboring (Telegram Mini App — konvert):\n` +
+    `${tmaDeep}\n\n` +
+    `🌐 Brauzer (ixtiyoriy):\n${liveUrl}\n\n` +
     `RSVP xabarlari shu chatga keladi.`;
 
   return sendTelegramMessage(params.hostChatId, text, {
     buttons: [
-      [
-        { text: '🌐 Mehmon sahifasi', url: liveUrl },
-        { text: '📱 Mini App', url: tmaDeep },
-      ],
+      [{ text: '📱 Mehmonlarga yuborish', url: tmaDeep }],
       [{ text: '📲 Ilova ichida ochish', web_app: { url: tmaWeb } }],
+      [{ text: '🌐 Brauzerda ochish', url: liveUrl }],
     ],
   });
 }

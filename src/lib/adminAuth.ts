@@ -21,9 +21,22 @@ export function adminAuthHeaders(): HeadersInit {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-/** Guest share link — only valid when invitation is ACTIVE */
-export function guestShareUrl(invitationId: string, origin = window.location.origin): string {
+export function publicBotUsername(): string {
+  return (
+    process.env.NEXT_PUBLIC_BOT_USERNAME ||
+    process.env.VITE_BOT_USERNAME ||
+    'onlayntaklifnomabot'
+  ).replace(/^@/, '');
+}
+
+/** Brauzer zaxira havolasi */
+export function guestWebUrl(invitationId: string, origin = window.location.origin): string {
   return `${origin}/v/${invitationId}`;
+}
+
+/** Mehmonlarga yuboriladigan asosiy havola — Telegram Mini App (konvert) */
+export function guestShareUrl(invitationId: string, _origin = window.location.origin): string {
+  return tmaGuestUrl(invitationId, publicBotUsername());
 }
 
 /** Deep-link so host can /start and link their Telegram chat */
@@ -48,6 +61,10 @@ export function tmaGuestUrl(
   const id = invitationId.replace(/^#/, '').toUpperCase().replace(/-/g, '_');
   const guest = guestName?.trim().replace(/\s+/g, '_') || '';
   const startapp = guest ? `${id}_${guest}` : id;
+  const short = process.env.NEXT_PUBLIC_TMA_SHORT_NAME?.trim().replace(/^\//, '');
+  if (short) {
+    return `https://t.me/${user}/${short}?startapp=${encodeURIComponent(startapp)}`;
+  }
   return `https://t.me/${user}?startapp=${encodeURIComponent(startapp)}`;
 }
 

@@ -7,6 +7,7 @@ import {
   clearAdminToken,
   getAdminToken,
   guestShareUrl,
+  guestWebUrl,
   isTelegramLinked,
   setAdminToken,
   tmaEntryUrl,
@@ -234,7 +235,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               : `Telegram: ${data.telegram?.description || data.telegram?.reason || 'xato'}`;
         setCommandResult(
           `✅ #${id} faollashtirildi.\n` +
-            `Mehmon: ${guestShareUrl(id)}\n` +
+            `Mehmon Mini App: ${guestShareUrl(id)}\n` +
+            `Brauzer: ${guestWebUrl(id)}\n` +
             `Bot: ${data.botLink || botStartUrl(id, botUsername)}\n` +
             tgNote
         );
@@ -734,12 +736,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             ) : (
                               <button
                                 type="button"
-                                onClick={() => copyText(`guest-${inv.id}`, guestShareUrl(inv.id))}
+                                onClick={() => copyText(`guest-${inv.id}`, tmaGuestUrl(inv.id, botUsername))}
                                 className="px-2.5 py-1.5 rounded-lg border text-[11px] font-medium flex items-center gap-1 cursor-pointer"
                                 style={{ borderColor: `${ADMIN_UI.emerald}55`, color: ADMIN_UI.emerald }}
+                                title="Mehmonlarga Telegram Mini App havolasini nusxalash"
                               >
                                 <Copy className="w-3 h-3" />
-                                {copiedKey === `guest-${inv.id}` ? 'Nusxa' : 'Mehmon'}
+                                {copiedKey === `guest-${inv.id}` ? 'Nusxa' : 'Mehmon Mini App'}
                               </button>
                             )}
                           </div>

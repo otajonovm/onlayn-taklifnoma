@@ -9,20 +9,33 @@ export function tmaEntryUrl(baseUrl = publicAppBaseUrl()): string {
   return `${baseUrl.replace(/\/$/, '')}/tma`;
 }
 
+export function tmaStartappPayload(invitationId: string, guestName?: string): string {
+  const id = invitationId.replace(/^#/, '').toUpperCase().replace(/-/g, '_');
+  const guest = guestName?.trim().replace(/\s+/g, '_') || '';
+  return guest ? `${id}_${guest}` : id;
+}
+
+/** Telegram WebView URL — «Ilova ichida ochish» tugmasi shu formatda ishlaydi */
+export function tmaWebAppUrl(invitationId?: string, baseUrl = publicAppBaseUrl()): string {
+  const base = tmaEntryUrl(baseUrl);
+  if (!invitationId) return base;
+  return `${base}?startapp=${encodeURIComponent(tmaStartappPayload(invitationId))}`;
+}
+
 export function tmaDeepLink(
   invitationId?: string,
   guestName?: string,
   botUsername = getBotUsername()
 ): string {
   const user = botUsername.replace(/^@/, '');
-  // Main Mini App format (BotFather → Mini Apps → Main App).
-  // `/app` short-name link "Bot application not found" beradi agar Direct Link App yo‘q bo‘lsa.
+  const short = process.env.NEXT_PUBLIC_TMA_SHORT_NAME?.trim().replace(/^\//, '');
   if (!invitationId) {
-    return `https://t.me/${user}?startapp`;
+    return short ? `https://t.me/${user}/${short}` : `https://t.me/${user}?startapp`;
   }
-  const id = invitationId.replace(/^#/, '').toUpperCase().replace(/-/g, '_');
-  const guest = guestName?.trim().replace(/\s+/g, '_') || '';
-  const startapp = guest ? `${id}_${guest}` : id;
+  const startapp = tmaStartappPayload(invitationId, guestName);
+  if (short) {
+    return `https://t.me/${user}/${short}?startapp=${encodeURIComponent(startapp)}`;
+  }
   return `https://t.me/${user}?startapp=${encodeURIComponent(startapp)}`;
 }
 

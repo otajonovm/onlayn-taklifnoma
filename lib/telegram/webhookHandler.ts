@@ -10,7 +10,7 @@ import {
   publicAppBaseUrl,
   sendTelegramMessage,
 } from '@lib/telegram/notify';
-import { tmaDeepLink, tmaEntryUrl } from '@lib/telegram/setup';
+import { tmaDeepLink, tmaEntryUrl, tmaWebAppUrl } from '@lib/telegram/setup';
 
 function miniAppButtons() {
   const tma = tmaEntryUrl();
@@ -62,21 +62,16 @@ export async function handleTelegramUpdate(body: Record<string, unknown>) {
     });
     const hostLink = botStartLink(result.invitation.id);
     const guestTma = tmaDeepLink(result.invitation.id);
-    const tmaWeb = `${tmaEntryUrl()}?startapp=${encodeURIComponent(
-      result.invitation.id.replace(/-/g, '_')
-    )}`;
     await sendTelegramMessage(
       chatIdStr,
       `✅ #${result.invitation.id} faollashtirildi.\n\n` +
         `👤 Mezbon ulash (yuboring):\n${hostLink}\n\n` +
-        `📱 Mehmon Mini App:\n${guestTma}`,
+        `📱 Mehmonlarga Mini App (konvert):\n${guestTma}`,
       {
         buttons: [
-          [
-            { text: '👤 Mezbon ulash', url: hostLink },
-            { text: '📱 Mini App', url: guestTma },
-          ],
-          [{ text: '📲 Ilova ichida', web_app: { url: tmaWeb } }],
+          [{ text: '👤 Mezbon ulash', url: hostLink }],
+          [{ text: '📱 Mehmon Mini App', url: guestTma }],
+          [{ text: '📲 Ilova ichida ochish', web_app: { url: tmaWebAppUrl(result.invitation.id) } }],
         ],
       }
     );
