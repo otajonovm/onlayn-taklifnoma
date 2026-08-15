@@ -1,6 +1,5 @@
 import {
   activateInvitation,
-  findInvitationById,
   linkTelegramChat,
 } from '@lib/services/invitationService';
 import {
@@ -11,6 +10,12 @@ import {
   publicAppBaseUrl,
   sendTelegramMessage,
 } from '@lib/telegram/notify';
+import { tmaDeepLink, tmaEntryUrl } from '@lib/telegram/setup';
+
+function miniAppButtons() {
+  const tma = tmaEntryUrl();
+  return [[{ text: '📱 Taklifnoma ochish', web_app: { url: tma } }]];
+}
 
 export async function handleTelegramUpdate(body: Record<string, unknown>) {
   const message = body.message as Record<string, unknown> | undefined;
@@ -24,12 +29,14 @@ export async function handleTelegramUpdate(body: Record<string, unknown>) {
 
   const adminChatId = getTelegramAdminChatId();
   const botUser = getBotUsername().replace(/^@/, '');
+  const tmaOpen = tmaDeepLink();
 
   if (/^\/(id|myid)(?:@\w+)?$/i.test(text)) {
     await sendTelegramMessage(
       chatIdStr,
-      `🆔 Sizning Telegram Chat ID:\n\n${chatIdStr}\n\n` +
-        `Buni .env ga yozing:\nTELEGRAM_ADMIN_CHAT_ID=${chatIdStr}`
+      `🆔 Sizning Telegram Chat ID:\n\n\`${chatIdStr}\`\n\n` +
+        `DigitalOcean / .env ga yozing:\nTELEGRAM_ADMIN_CHAT_ID=${chatIdStr}`,
+      { buttons: miniAppButtons() }
     );
     return { ok: true, action: 'id' };
   }
@@ -37,7 +44,9 @@ export async function handleTelegramUpdate(body: Record<string, unknown>) {
   const activateMatch = text.match(/^\/activate(?:@\w+)?\s+#?([A-Za-z0-9_-]+)$/i);
   if (activateMatch) {
     if (!adminChatId || chatIdStr !== adminChatId) {
-      await sendTelegramMessage(chatIdStr, '⛔ Bu buyruq faqat admin uchun.');
+      await sendTelegramMessage(chatIdStr, '⛔ Bu buyruq faqat admin uchun.', {
+        buttons: miniAppButtons(),
+      });
       return { ok: true, action: 'activate_denied' };
     }
     const result = await activateInvitation(activateMatch[1]);
@@ -51,9 +60,21 @@ export async function handleTelegramUpdate(body: Record<string, unknown>) {
       hostName: result.invitation.hostName,
       eventTitle: result.invitation.eventTitle,
     });
+    const hostLink = botStartLink(result.invitation.id);
+    const guestTma = tmaDeepLink(result.invitation.id);
     await sendTelegramMessage(
       chatIdStr,
-      `✅ #${result.invitation.id} faollashtirildi.\n🔗 ${botStartLink(result.invitation.id)}`
+      `✅ #${result.invitation.id} faollashtirildi.\n\n` +
+        `👤 Mezbon ulash (yuboring):\n${hostLink}\n\n` +
+        `📱 Mehmon Mini App:\n${guestTma}`,
+      {
+        buttons: [
+          [
+            { text: '👤 Mezbon ulash', url: hostLink },
+            { text: '📱 Mini App', web_app: { url: tmaEntryUrl() } },
+          ],
+        ],
+      }
     );
     return { ok: true, action: 'activate' };
   }
@@ -63,9 +84,11 @@ export async function handleTelegramUpdate(body: Record<string, unknown>) {
     await sendTelegramMessage(
       chatIdStr,
       `Onlayn Taklifnoma botiga xush kelibsiz.\n\n` +
-        `• Taklifnoma ulash: admin yuborgan bot havolasini oching\n` +
-        `• Chat ID: /id\n` +
-        `• Admin aktivlash: /activate OT-XXXXX`
+        `📱 Mini App: pastdagi «Taklifnoma» tugmasi yoki ${tmaOpen}\n` +
+        `🔗 Mezbon ulash: admin yuborgan /start havolasini oching\n` +
+        `🆔 Chat ID: /id\n` +
+        `⚡ Admin: /activate OT-XXXXX`,
+      { buttons: miniAppButtons() }
     );
     return { ok: true, action: 'help' };
   }
@@ -75,9 +98,12 @@ export async function handleTelegramUpdate(body: Record<string, unknown>) {
     await sendTelegramMessage(
       chatIdStr,
       `Assalomu alaykum! 👋\n\n` +
-        `Taklifnomani Telegramga ulash uchun admin yuborgan havolani oching:\n` +
+        `1️⃣ Taklifnoma yaratish — «Taklifnoma» tugmasi yoki Mini App\n` +
+        `2️⃣ Mezbon sifatida ulash — admin yuborgan havola:\n` +
         `https://t.me/${botUser}?start=OT_XXXXX\n\n` +
-        `Chat ID kerak bo‘lsa: /id`
+        `Chat ID kerak bo‘lsa: /id\n` +
+        `Sayt: ${publicAppBaseUrl()}`,
+      { buttons: miniAppButtons() }
     );
     return { ok: true, action: 'start' };
   }
@@ -87,7 +113,8 @@ export async function handleTelegramUpdate(body: Record<string, unknown>) {
   if (!linked) {
     await sendTelegramMessage(
       chatIdStr,
-      `❌ #${invitationId} bazada topilmadi.\n\nSayt: ${publicAppBaseUrl()}`
+      `❌ #${invitationId} bazada topilmadi.\n\nSayt: ${publicAppBaseUrl()}`,
+      { buttons: miniAppButtons() }
     );
     return { ok: true, linked: false, invitationId };
   }

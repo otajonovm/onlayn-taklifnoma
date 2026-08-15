@@ -33,6 +33,24 @@ export function botStartUrl(invitationId: string, botUsername: string): string {
   return `https://t.me/${user}?start=${payload}`;
 }
 
+/** Mini App entry (Menu Button / Main App URL) */
+export function tmaEntryUrl(origin = window.location.origin): string {
+  return `${origin.replace(/\/$/, '')}/tma`;
+}
+
+/** Telegram Mini App deep link for a guest invitation */
+export function tmaGuestUrl(
+  invitationId: string,
+  botUsername: string,
+  guestName?: string
+): string {
+  const user = botUsername.replace(/^@/, '') || 'onlayntaklifnomabot';
+  const id = invitationId.replace(/^#/, '').toUpperCase().replace(/-/g, '_');
+  const guest = guestName?.trim().replace(/\s+/g, '_') || '';
+  const startapp = guest ? `${id}_${guest}` : id;
+  return `https://t.me/${user}/app?startapp=${encodeURIComponent(startapp)}`;
+}
+
 /** Host linked bot if telegramChatId is a numeric chat id */
 export function isTelegramLinked(chatId?: string | null): boolean {
   if (!chatId) return false;

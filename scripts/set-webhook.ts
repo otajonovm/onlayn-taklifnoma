@@ -1,4 +1,5 @@
 /**
+ * @deprecated Prefer: npm run bot:setup
  * Production webhook o‘rnatish (bir marta yoki deploydan keyin).
  * Usage:
  *   APP_URL=https://your-app.ondigitalocean.app npm run bot:webhook
@@ -7,6 +8,8 @@ import { config as loadEnv } from 'dotenv';
 
 loadEnv({ path: '.env.local', quiet: true });
 loadEnv({ quiet: true });
+
+console.log('ℹ To‘liq sozlash uchun: npm run bot:setup\n');
 
 const token = process.env.TELEGRAM_BOT_TOKEN?.trim();
 const appUrl = (process.env.APP_URL || '').replace(/\/$/, '');
@@ -18,7 +21,7 @@ if (!token) {
 if (!/^https:\/\//i.test(appUrl) || /localhost|127\.0\.0\.1/i.test(appUrl)) {
   console.error('❌ APP_URL https production manzil bo‘lishi kerak');
   console.error(`   Hozirgi: ${appUrl || '(bo‘sh)'}`);
-  console.error('   Misole: APP_URL=https://octopus-app-ecfvb.ondigitalocean.app npm run bot:webhook');
+  console.error('   Misole: APP_URL=https://octopus-app-ecfvb.ondigitalocean.app npm run bot:setup');
   process.exit(1);
 }
 
@@ -43,7 +46,7 @@ async function main() {
 
   if (setData.ok) {
     console.log(`\n✅ Bot serverga ulandi → ${hookUrl}`);
-    console.log('👉 Endi lokalda npm run bot ISHLATMANG (webhookni o‘chiradi).');
+    console.log('👉 Keyingi qadam: npm run bot:setup (Menu Button + buyruqlar)');
   } else {
     console.error('\n❌ Webhook o‘rnatilmadi:', setData.description);
     process.exit(1);

@@ -94,10 +94,17 @@ export interface TelegramSendResult {
   description?: string;
 }
 
+export type TelegramInlineButton =
+  | { text: string; url: string }
+  | { text: string; web_app: { url: string } };
+
 export async function sendTelegramMessage(
   chatId: string,
   text: string,
-  options?: { parseMode?: 'HTML' | 'Markdown' | 'MarkdownV2' }
+  options?: {
+    parseMode?: 'HTML' | 'Markdown' | 'MarkdownV2';
+    buttons?: TelegramInlineButton[][];
+  }
 ): Promise<TelegramSendResult> {
   const token = getTelegramBotToken();
   if (!token) {
@@ -116,6 +123,9 @@ export async function sendTelegramMessage(
         text,
         disable_web_page_preview: false,
         parse_mode: options?.parseMode,
+        reply_markup: options?.buttons
+          ? { inline_keyboard: options.buttons }
+          : undefined,
       }),
     });
 
@@ -210,14 +220,26 @@ export async function notifyHostLinked(params: {
   invitationId: string;
 }): Promise<TelegramSendResult> {
   const liveUrl = guestPublicUrl(params.invitationId);
+  const tmaUrl = `${publicAppBaseUrl()}/tma`;
+  const botUser = getBotUsername().replace(/^@/, '');
+  const startapp = botStartPayload(params.invitationId);
+  const tmaDeep = `https://t.me/${botUser}/app?startapp=${startapp}`;
   const text =
     `🎉 Taklifnomangiz Telegramga ulandi!\n\n` +
     `🆔 #${params.invitationId}\n\n` +
     `🌐 Jonli havola (mehmonlarga yuboring):\n` +
     `${liveUrl}\n\n` +
+    `📱 Mini App havola:\n${tmaDeep}\n\n` +
     `RSVP xabarlari shu chatga keladi.`;
 
-  return sendTelegramMessage(params.hostChatId, text);
+  return sendTelegramMessage(params.hostChatId, text, {
+    buttons: [
+      [
+        { text: '🌐 Mehmon sahifasi', url: liveUrl },
+        { text: '📱 Mini App', web_app: { url: tmaUrl } },
+      ],
+    ],
+  });
 }
 
 function formatUzDateTime(iso: string): string {

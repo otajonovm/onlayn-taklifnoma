@@ -11,6 +11,7 @@
     "dev:legacy": "tsx server.ts",
     "bot": "tsx scripts/telegram-poll.ts",
     "bot:webhook": "tsx scripts/set-webhook.ts",
+    "bot:setup": "tsx scripts/setup-telegram.ts",
     "build": "prisma generate && next build && node scripts/copy-standalone-assets.mjs",
     "start": "node scripts/start-production.mjs",
     "postinstall": "prisma generate",

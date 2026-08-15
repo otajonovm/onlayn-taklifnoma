@@ -9,6 +9,8 @@ import {
   guestShareUrl,
   isTelegramLinked,
   setAdminToken,
+  tmaEntryUrl,
+  tmaGuestUrl,
 } from '../../lib/adminAuth';
 import {
   ShieldCheck,
@@ -26,6 +28,7 @@ import {
   Link2,
   Link2Off,
   Pencil,
+  Smartphone,
 } from 'lucide-react';
 import { AdminInvitationEditor } from './AdminInvitationEditor';
 
@@ -67,6 +70,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [commandResult, setCommandResult] = useState<string | null>(null);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [editingInvitation, setEditingInvitation] = useState<Invitation | null>(null);
+  const [tgSetupBusy, setTgSetupBusy] = useState(false);
+  const [tgLinks, setTgLinks] = useState<{
+    tmaUrl: string;
+    miniAppOpen: string;
+    botChat: string;
+    botFatherHints: string[];
+  } | null>(null);
 
   const fetchData = async () => {
     if (!getAdminToken()) return;
@@ -125,7 +135,60 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         clearAdminToken();
         setToken(null);
       });
+
+    fetch('/api/admin/telegram/setup', { headers: adminAuthHeaders() })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.success && d.links) {
+          setTgLinks({
+            tmaUrl: d.links.tmaUrl,
+            miniAppOpen: d.links.miniAppOpen,
+            botChat: d.links.botChat,
+            botFatherHints: d.links.botFatherHints || [],
+          });
+        }
+      })
+      .catch(() => {});
   }, [token]);
+
+  const handleTelegramSetup = async () => {
+    setTgSetupBusy(true);
+    try {
+      const res = await fetch('/api/admin/telegram/setup', {
+        method: 'POST',
+        headers: adminAuthHeaders(),
+      });
+      const data = await res.json();
+      if (res.status === 401) {
+        clearAdminToken();
+        setToken(null);
+        return;
+      }
+      if (data.links) {
+        setTgLinks({
+          tmaUrl: data.links.tmaUrl,
+          miniAppOpen: data.links.miniAppOpen,
+          botChat: data.links.botChat,
+          botFatherHints: data.links.botFatherHints || [],
+        });
+      }
+      const lines = (data.steps || [])
+        .map((s: { ok: boolean; name: string; detail?: string }) =>
+          `${s.ok ? '✅' : '❌'} ${s.name}: ${s.detail || ''}`
+        )
+        .join('\n');
+      setCommandResult(
+        `${data.message || ''}\n\n${lines}\n\n` +
+          `Mini App URL:\n${data.links?.tmaUrl || ''}\n\n` +
+          `BotFather Main App (qo‘lda):\n${(data.links?.botFatherHints || []).join('\n')}`
+      );
+      setTelegramConfigured(Boolean(data.configured?.token && data.configured?.adminChat));
+    } catch {
+      setCommandResult('❌ Telegram sozlash tarmoq xatosi');
+    } finally {
+      setTgSetupBusy(false);
+    }
+  };
 
   const handleLoginSuccess = (newToken: string) => {
     setAdminToken(newToken);
@@ -357,6 +420,90 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           ))}
         </div>
 
+        {/* Telegram + Mini App setup */}
+        <div
+          className="p-5 rounded-2xl border space-y-4"
+          style={{
+            borderColor: ADMIN_UI.border,
+            backgroundColor: 'rgba(255,255,255,0.85)',
+          }}
+        >
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-medium flex items-center gap-2" style={{ color: ADMIN_UI.charcoal }}>
+                <Smartphone className="w-4 h-4" style={{ color: ADMIN_UI.gold }} />
+                Telegram bot + Mini App
+              </h3>
+              <p className="text-xs mt-1" style={{ color: ADMIN_UI.muted }}>
+                Bir tugma: webhook, buyruqlar (/start, /id, /activate) va Menu Button → Mini App.
+                Main App faqat BotFather’da bir marta qo‘lda yoqiladi.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleTelegramSetup}
+              disabled={tgSetupBusy}
+              className="px-4 py-2.5 rounded-xl font-medium text-xs uppercase tracking-wider cursor-pointer shrink-0 disabled:opacity-60"
+              style={{ backgroundColor: ADMIN_UI.emerald, color: ADMIN_UI.ivory }}
+            >
+              {tgSetupBusy ? 'Sozlanmoqda…' : 'Botni sozlash'}
+            </button>
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-2 text-xs">
+            {[
+              {
+                key: 'tma',
+                label: 'Menu / Main App URL',
+                value: tgLinks?.tmaUrl || tmaEntryUrl(),
+              },
+              {
+                key: 'open',
+                label: 'Mini App ochish',
+                value: tgLinks?.miniAppOpen || `https://t.me/${botUsername}/app`,
+              },
+              {
+                key: 'bot',
+                label: 'Bot chat',
+                value: tgLinks?.botChat || `https://t.me/${botUsername}`,
+              },
+              {
+                key: 'hint',
+                label: 'BotFather Main App',
+                value: (tgLinks?.botFatherHints || []).join(' · ') || `URL: ${tmaEntryUrl()}`,
+              },
+            ].map((row) => (
+              <div
+                key={row.key}
+                className="flex items-start justify-between gap-2 p-3 rounded-xl border"
+                style={{ borderColor: ADMIN_UI.border, backgroundColor: ADMIN_UI.cream }}
+              >
+                <div className="min-w-0">
+                  <div className="text-[10px] uppercase tracking-wider mb-1" style={{ color: ADMIN_UI.muted }}>
+                    {row.label}
+                  </div>
+                  <div className="font-mono break-all" style={{ color: ADMIN_UI.charcoal }}>
+                    {row.value}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => copyText(row.key, row.value)}
+                  className="p-1.5 rounded-lg border shrink-0 cursor-pointer"
+                  style={{ borderColor: ADMIN_UI.border, color: ADMIN_UI.gold }}
+                  title="Nusxa"
+                >
+                  {copiedKey === row.key ? (
+                    <CheckCircle className="w-3.5 h-3.5" style={{ color: ADMIN_UI.emerald }} />
+                  ) : (
+                    <Copy className="w-3.5 h-3.5" />
+                  )}
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+
         {/* Command box */}
         <div
           className="p-5 rounded-2xl border space-y-3"
@@ -477,6 +624,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   filtered.map((inv) => {
                     const linked = isTelegramLinked(inv.telegramChatId);
                     const botLink = botStartUrl(inv.id, botUsername);
+                    const miniLink = tmaGuestUrl(inv.id, botUsername);
                     return (
                       <tr
                         key={inv.id}
@@ -550,10 +698,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                               onClick={() => copyText(`bot-${inv.id}`, botLink)}
                               className="px-2.5 py-1.5 rounded-lg border text-[11px] font-medium flex items-center gap-1 cursor-pointer"
                               style={{ borderColor: ADMIN_UI.border, color: ADMIN_UI.gold }}
-                              title="Bot ulanish havolasini nusxalash"
+                              title="Mezbon bot ulanish havolasi"
                             >
                               <Copy className="w-3 h-3" />
                               {copiedKey === `bot-${inv.id}` ? 'Nusxa' : 'Bot link'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => copyText(`tma-${inv.id}`, miniLink)}
+                              className="px-2.5 py-1.5 rounded-lg border text-[11px] font-medium flex items-center gap-1 cursor-pointer"
+                              style={{ borderColor: ADMIN_UI.border, color: ADMIN_UI.emerald }}
+                              title="Mehmon Mini App havolasi"
+                            >
+                              <Smartphone className="w-3 h-3" />
+                              {copiedKey === `tma-${inv.id}` ? 'Nusxa' : 'Mini App'}
                             </button>
                             {inv.status === 'PENDING' ? (
                               <button
