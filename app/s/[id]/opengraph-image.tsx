@@ -3,12 +3,14 @@ import { getInvitationDTO } from '@lib/services/invitationService';
 import { invitationPeopleLine } from '@lib/share/invitationShare';
 
 export const runtime = 'nodejs';
+export const size = { width: 1200, height: 630 };
+export const contentType = 'image/png';
 
 export default async function OpenGraphImage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const invitation = await getInvitationDTO(id);
   const people = invitation ? invitationPeopleLine(invitation) : 'Onlayn Taklifnoma';
-  const title = invitation?.eventTitle || 'Taklifnoma';
+  const event = invitation?.eventTitle || 'Taklifnoma';
   const host = invitation?.hostName || '';
 
   return new ImageResponse(
@@ -24,13 +26,18 @@ export default async function OpenGraphImage({ params }: { params: Promise<{ id:
           background: 'linear-gradient(135deg, #0F5132 0%, #1A1A1A 100%)',
           color: '#FAFAFA',
           fontFamily: 'serif',
-          padding: 48,
+          padding: 56,
         }}
       >
-        <div style={{ fontSize: 22, color: '#D4AF37', letterSpacing: 6, marginBottom: 16 }}>TAKLIFNOMA</div>
-        <div style={{ fontSize: 48, textAlign: 'center', marginBottom: 12 }}>{people}</div>
-        <div style={{ fontSize: 26, opacity: 0.9, textAlign: 'center' }}>{title}</div>
-        {host ? <div style={{ fontSize: 20, marginTop: 16, color: '#D4AF37' }}>Mezbon: {host}</div> : null}
+        <div style={{ fontSize: 22, color: '#D4AF37', letterSpacing: 6, marginBottom: 20 }}>
+          TAKLIFNOMA
+        </div>
+        <div style={{ fontSize: 52, textAlign: 'center', marginBottom: 14 }}>{people}</div>
+        <div style={{ fontSize: 28, opacity: 0.9, textAlign: 'center' }}>{event}</div>
+        {host ? (
+          <div style={{ fontSize: 20, marginTop: 18, color: '#D4AF37' }}>Mezbon: {host}</div>
+        ) : null}
+        <div style={{ fontSize: 16, marginTop: 28, opacity: 0.7 }}>Rasmiy onlayn taklifnoma</div>
       </div>
     ),
     { width: 1200, height: 630 }

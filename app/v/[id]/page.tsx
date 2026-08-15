@@ -1,6 +1,32 @@
 import { redirect } from 'next/navigation';
+import type { Metadata } from 'next';
 import { GuestInvitationView } from '@/components/invitation/GuestInvitationView';
 import { getInvitationDTO } from '@lib/services/invitationService';
+import { invitationShareDescription, invitationShareTitle } from '@lib/share/invitationShare';
+import { publicAppBaseUrl } from '@lib/telegram/notify';
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const invitation = await getInvitationDTO(id);
+  if (!invitation) return { title: 'Taklifnoma' };
+  const title = invitationShareTitle(invitation);
+  const description = invitationShareDescription(invitation);
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      url: `${publicAppBaseUrl()}/s/${invitation.id}`,
+      siteName: 'Onlayn Taklifnoma',
+      type: 'website',
+    },
+  };
+}
 
 export default async function GuestPage({
   params,

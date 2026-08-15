@@ -56,6 +56,10 @@ export function guestPublicUrl(invitationId: string): string {
   return `${publicAppBaseUrl()}/v/${normalizeInvitationId(invitationId)}`;
 }
 
+export function guestShareLandingUrl(invitationId: string): string {
+  return `${publicAppBaseUrl()}/s/${normalizeInvitationId(invitationId)}`;
+}
+
 /**
  * Telegram deep-link va turli yozuvlarni yagona ID ga keltirish.
  * OT_31707 / ot-31707 / #OT-31707 / OT31707 → OT-31707
@@ -221,26 +225,31 @@ export async function notifyAdminActivated(params: {
 export async function notifyHostLinked(params: {
   hostChatId: string;
   invitationId: string;
+  hostName?: string;
+  brideName?: string;
+  groomName?: string;
+  eventTitle?: string;
 }): Promise<TelegramSendResult> {
   const liveUrl = guestPublicUrl(params.invitationId);
+  const shareUrl = guestShareLandingUrl(params.invitationId);
   const startapp = botStartPayload(params.invitationId);
-  const botUser = getBotUsername().replace(/^@/, '');
-  const short = process.env.NEXT_PUBLIC_TMA_SHORT_NAME?.trim().replace(/^\//, '');
-  const tmaDeep = short
-    ? `https://t.me/${botUser}/${short}?startapp=${startapp}`
-    : `https://t.me/${botUser}?startapp=${startapp}`;
   const tmaWeb = `${publicAppBaseUrl()}/tma?startapp=${encodeURIComponent(startapp)}`;
+  const couple = [params.groomName, params.brideName].filter((n) => n?.trim()).join(' & ');
+  const people = couple || params.hostName || 'Taklifnoma';
+  const event = params.eventTitle || 'Tadbir';
   const text =
     `🎉 Taklifnomangiz Telegramga ulandi!\n\n` +
+    `💌 ${people}\n` +
+    `📅 ${event}\n` +
     `🆔 #${params.invitationId}\n\n` +
-    `📱 Mehmonlarga SHU havolani yuboring (Telegram Mini App — konvert):\n` +
-    `${tmaDeep}\n\n` +
-    `🌐 Brauzer (ixtiyoriy):\n${liveUrl}\n\n` +
+    `📱 Mehmonlarga SHU havolani yuboring\n` +
+    `(previewda ism chiqadi, ochilganda Mini App):\n` +
+    `${shareUrl}\n\n` +
     `RSVP xabarlari shu chatga keladi.`;
 
   return sendTelegramMessage(params.hostChatId, text, {
     buttons: [
-      [{ text: '📱 Mehmonlarga yuborish', url: tmaDeep }],
+      [{ text: '📱 Mehmonlarga yuborish', url: shareUrl }],
       [{ text: '📲 Ilova ichida ochish', web_app: { url: tmaWeb } }],
       [{ text: '🌐 Brauzerda ochish', url: liveUrl }],
     ],

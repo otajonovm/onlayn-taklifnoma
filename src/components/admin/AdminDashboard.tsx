@@ -32,6 +32,7 @@ import {
   Smartphone,
 } from 'lucide-react';
 import { AdminInvitationEditor } from './AdminInvitationEditor';
+import { invitationShareMessage } from '@lib/share/invitationShare';
 
 const ADMIN_UI = {
   emerald: '#0F5132',
@@ -235,7 +236,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               : `Telegram: ${data.telegram?.description || data.telegram?.reason || 'xato'}`;
         setCommandResult(
           `✅ #${id} faollashtirildi.\n` +
-            `Mehmon Mini App: ${guestShareUrl(id)}\n` +
+            `Mehmon havola: ${guestShareUrl(id)}\n` +
             `Brauzer: ${guestWebUrl(id)}\n` +
             `Bot: ${data.botLink || botStartUrl(id, botUsername)}\n` +
             tgNote
@@ -736,13 +737,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             ) : (
                               <button
                                 type="button"
-                                onClick={() => copyText(`guest-${inv.id}`, tmaGuestUrl(inv.id, botUsername))}
+                                onClick={() =>
+                                  copyText(
+                                    `guest-${inv.id}`,
+                                    invitationShareMessage({
+                                      invitation: inv,
+                                      openUrl: guestShareUrl(inv.id),
+                                    })
+                                  )
+                                }
                                 className="px-2.5 py-1.5 rounded-lg border text-[11px] font-medium flex items-center gap-1 cursor-pointer"
                                 style={{ borderColor: `${ADMIN_UI.emerald}55`, color: ADMIN_UI.emerald }}
-                                title="Mehmonlarga Telegram Mini App havolasini nusxalash"
+                                title="Mehmonlarga yuborish: ism + taklifnoma havolasi"
                               >
                                 <Copy className="w-3 h-3" />
-                                {copiedKey === `guest-${inv.id}` ? 'Nusxa' : 'Mehmon Mini App'}
+                                {copiedKey === `guest-${inv.id}` ? 'Nusxa' : 'Mehmon havola'}
                               </button>
                             )}
                           </div>

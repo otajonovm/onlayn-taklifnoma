@@ -7,6 +7,7 @@ export {
   normalizeInvitationId,
   botStartLink,
   guestPublicUrl,
+  guestShareLandingUrl,
   getBotUsername,
   getTelegramBotToken,
   getTelegramAdminChatId,

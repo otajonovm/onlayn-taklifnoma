@@ -7,6 +7,7 @@ import { ActivationModal } from '../modals/ActivationModal';
 import { GoldParticlesBackground } from '@/components/ui/GoldParticlesBackground';
 import { RevealWords } from './RevealText';
 import { guestShareUrl } from '@/lib/adminAuth';
+import { invitationShareMessage } from '@lib/share/invitationShare';
 import { Sparkles, Share2, CheckCircle2, Lock, Pencil } from 'lucide-react';
 import { motion } from 'motion/react';
 import { WEDDING_TEMPLATES } from '@/config/weddingTemplates';
@@ -100,7 +101,12 @@ export const InvitationCard: React.FC<InvitationCardProps> = ({
       setTimeout(() => setShareBlockedHint(false), 2500);
       return;
     }
-    navigator.clipboard.writeText(guestShareUrl(invitation.id));
+    navigator.clipboard.writeText(
+      invitationShareMessage({
+        invitation,
+        openUrl: guestShareUrl(invitation.id),
+      })
+    );
     setCopiedShare(true);
     setTimeout(() => setCopiedShare(false), 2000);
   };
@@ -164,7 +170,7 @@ export const InvitationCard: React.FC<InvitationCardProps> = ({
               color: canShare ? BRAND.muted : BRAND.accent,
               opacity: canShare ? 1 : 0.85,
             }}
-            title={canShare ? 'Mehmon Mini App havolasini nusxalash' : 'Aktivlashdan keyin ochiladi'}
+            title={canShare ? 'Taklifnoma matnini nusxalash (ism + havola)' : 'Aktivlashdan keyin ochiladi'}
           >
             {copiedShare ? (
               <CheckCircle2 className="w-4 h-4" style={{ color: BRAND.accent }} />

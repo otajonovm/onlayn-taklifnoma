@@ -34,9 +34,9 @@ export function guestWebUrl(invitationId: string, origin = window.location.origi
   return `${origin}/v/${invitationId}`;
 }
 
-/** Mehmonlarga yuboriladigan asosiy havola — Telegram Mini App (konvert) */
-export function guestShareUrl(invitationId: string, _origin = window.location.origin): string {
-  return tmaGuestUrl(invitationId, publicBotUsername());
+/** Mehmonlarga yuboriladigan havola — previewda ism chiqadi, ochilganda Mini App */
+export function guestShareUrl(invitationId: string, origin = window.location.origin): string {
+  return `${origin.replace(/\/$/, '')}/s/${invitationId}`;
 }
 
 /** Deep-link so host can /start and link their Telegram chat */

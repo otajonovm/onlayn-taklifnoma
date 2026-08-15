@@ -118,6 +118,13 @@ export async function handleTelegramUpdate(body: Record<string, unknown>) {
     return { ok: true, linked: false, invitationId };
   }
 
-  await notifyHostLinked({ hostChatId: chatIdStr, invitationId: linked.id });
+  await notifyHostLinked({
+    hostChatId: chatIdStr,
+    invitationId: linked.id,
+    hostName: linked.hostName,
+    brideName: linked.brideName,
+    groomName: linked.groomName,
+    eventTitle: linked.eventTitle,
+  });
   return { ok: true, linked: true, invitationId: linked.id };
 }

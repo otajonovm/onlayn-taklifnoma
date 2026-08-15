@@ -594,6 +594,10 @@ export function createApiApp(): Express {
       await notifyHostLinked({
         hostChatId: chatIdStr,
         invitationId: invitation.id,
+        hostName: invitation.hostName,
+        brideName: invitation.brideName,
+        groomName: invitation.groomName,
+        eventTitle: invitation.eventTitle,
       });
 
       return res.json({ ok: true, linked: true, invitationId: invitation.id });
