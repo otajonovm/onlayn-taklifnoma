@@ -435,8 +435,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 Telegram bot + Mini App
               </h3>
               <p className="text-xs mt-1" style={{ color: ADMIN_UI.muted }}>
-                Bir tugma: webhook, buyruqlar (/start, /id, /activate) va Menu Button → Mini App.
-                Main App faqat BotFather’da bir marta qo‘lda yoqiladi.
+                «Botni sozlash» — webhook, buyruqlar, Menu Button. Mini App deep link uchun
+                BotFather’da Main App yoqilgan bo‘lishi shart (URL: /tma). To‘g‘ri format:{' '}
+                <span className="font-mono">t.me/bot?startapp=OT_XXXXX</span> —{' '}
+                <span className="font-mono">/app</span> emas.
               </p>
             </div>
             <button
@@ -459,8 +461,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               },
               {
                 key: 'open',
-                label: 'Mini App ochish',
-                value: tgLinks?.miniAppOpen || `https://t.me/${botUsername}/app`,
+                label: 'Mini App ochish (Main App)',
+                value: tgLinks?.miniAppOpen || `https://t.me/${botUsername}?startapp`,
               },
               {
                 key: 'bot',
@@ -469,8 +471,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               },
               {
                 key: 'hint',
-                label: 'BotFather Main App',
-                value: (tgLinks?.botFatherHints || []).join(' · ') || `URL: ${tmaEntryUrl()}`,
+                label: 'Agar "Bot application not found" chiqsa',
+                value:
+                  (tgLinks?.botFatherHints || []).join(' · ') ||
+                  `BotFather → Main App → Enable → URL: ${tmaEntryUrl()}`,
               },
             ].map((row) => (
               <div

@@ -21,7 +21,7 @@ export async function GET() {
       botUsername: getBotUsername(),
       webhookPath: '/api/telegram/webhook',
       tmaUrl: `${publicAppBaseUrl().replace(/\/$/, '')}/tma`,
-      miniAppOpen: `https://t.me/${getBotUsername().replace(/^@/, '')}/app`,
+      miniAppOpen: `https://t.me/${getBotUsername().replace(/^@/, '')}?startapp`,
     },
   });
 }

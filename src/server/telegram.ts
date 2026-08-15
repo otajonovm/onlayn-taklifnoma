@@ -223,7 +223,7 @@ export async function notifyHostLinked(params: {
   const tmaUrl = `${publicAppBaseUrl()}/tma`;
   const botUser = getBotUsername().replace(/^@/, '');
   const startapp = botStartPayload(params.invitationId);
-  const tmaDeep = `https://t.me/${botUser}/app?startapp=${startapp}`;
+  const tmaDeep = `https://t.me/${botUser}?startapp=${startapp}`;
   const text =
     `🎉 Taklifnomangiz Telegramga ulandi!\n\n` +
     `🆔 #${params.invitationId}\n\n` +

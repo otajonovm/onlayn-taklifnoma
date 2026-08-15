@@ -38,7 +38,7 @@ export function tmaEntryUrl(origin = window.location.origin): string {
   return `${origin.replace(/\/$/, '')}/tma`;
 }
 
-/** Telegram Mini App deep link for a guest invitation */
+/** Telegram Main Mini App deep link (requires BotFather Main App enabled) */
 export function tmaGuestUrl(
   invitationId: string,
   botUsername: string,
@@ -48,7 +48,7 @@ export function tmaGuestUrl(
   const id = invitationId.replace(/^#/, '').toUpperCase().replace(/-/g, '_');
   const guest = guestName?.trim().replace(/\s+/g, '_') || '';
   const startapp = guest ? `${id}_${guest}` : id;
-  return `https://t.me/${user}/app?startapp=${encodeURIComponent(startapp)}`;
+  return `https://t.me/${user}?startapp=${encodeURIComponent(startapp)}`;
 }
 
 /** Host linked bot if telegramChatId is a numeric chat id */

@@ -15,23 +15,26 @@ export function tmaDeepLink(
   botUsername = getBotUsername()
 ): string {
   const user = botUsername.replace(/^@/, '');
+  // Main Mini App format (BotFather → Mini Apps → Main App).
+  // `/app` short-name link "Bot application not found" beradi agar Direct Link App yo‘q bo‘lsa.
   if (!invitationId) {
-    return `https://t.me/${user}/app`;
+    return `https://t.me/${user}?startapp`;
   }
   const id = invitationId.replace(/^#/, '').toUpperCase().replace(/-/g, '_');
   const guest = guestName?.trim().replace(/\s+/g, '_') || '';
   const startapp = guest ? `${id}_${guest}` : id;
-  return `https://t.me/${user}/app?startapp=${encodeURIComponent(startapp)}`;
+  return `https://t.me/${user}?startapp=${encodeURIComponent(startapp)}`;
 }
 
 export function botFatherMainAppHint(botUsername = getBotUsername()): string[] {
   const user = botUsername.replace(/^@/, '');
   const url = tmaEntryUrl();
   return [
-    'BotFather → Mini Apps → Main App → Enable',
-    `URL: ${url}`,
-    `Short name: app`,
-    `Natija: https://t.me/${user}/app`,
+    'BotFather → Mini Apps → Main App → Enable (majburiy)',
+    `Web App URL: ${url}`,
+    'Enable → Save',
+    `Tekshiruv: https://t.me/${user}?startapp=OT_TEST`,
+    'Eslatma: /app short name KERAK EMAS — Main App ?startapp= ishlatadi',
   ];
 }
 
