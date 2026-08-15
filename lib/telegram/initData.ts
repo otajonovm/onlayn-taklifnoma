@@ -49,5 +49,10 @@ export function parseStartParam(startParam?: string | null): {
     };
   }
 
+  const embedded = raw.match(/OT[-_]?(\d{4,})/i);
+  if (embedded) {
+    return { invitationId: `OT-${embedded[1]}` };
+  }
+
   return {};
 }

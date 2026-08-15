@@ -2,32 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { retrieveLaunchParams } from '@telegram-apps/sdk-react';
 import { Loader2 } from 'lucide-react';
 import { parseStartParam } from '@lib/telegram/initData';
+import { extractTelegramInitData, extractTelegramStartParam } from '@lib/telegram/launchParams';
 
-function readStartParamFromLaunch(): { initData: string; startParam: string } {
-  let initData = '';
-  let startParam = '';
-  try {
-    const launch = retrieveLaunchParams() as Record<string, unknown>;
-    if (typeof launch.initDataRaw === 'string') initData = launch.initDataRaw;
-    if (typeof launch.startParam === 'string') startParam = launch.startParam;
-
-    const initDataObj = launch.initData as { startParam?: string } | undefined;
-    if (!startParam && typeof initDataObj?.startParam === 'string') {
-      startParam = initDataObj.startParam;
-    }
-
-    // Ba’zi klientlar start_param ni initData query ichida beradi
-    if (!startParam && initData) {
-      const fromInit = new URLSearchParams(initData).get('start_param');
-      if (fromInit) startParam = fromInit;
-    }
-  } catch {
-    /* not in TMA */
-  }
-  return { initData, startParam };
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 export function TmaEntry() {
@@ -36,19 +16,28 @@ export function TmaEntry() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
+
     (async () => {
       try {
-        let startParam =
-          searchParams.get('startapp') ||
-          searchParams.get('tgWebAppStartParam') ||
-          searchParams.get('start_param') ||
-          '';
+        let startParam = '';
+        let initData = '';
 
-        const launch = readStartParamFromLaunch();
-        const initData = launch.initData;
-        startParam = startParam || launch.startParam || '';
+        // Telegram hash/WebApp ba’zan bir zumda keladi — qayta urinish
+        for (const wait of [0, 80, 200, 400]) {
+          if (wait) await sleep(wait);
+          if (cancelled) return;
 
-        // Auth xato bo‘lsa ham startapp bo‘lsa mehmon sahifasiga o‘tamiz
+          startParam =
+            searchParams.get('startapp') ||
+            searchParams.get('tgWebAppStartParam') ||
+            searchParams.get('start_param') ||
+            extractTelegramStartParam();
+
+          initData = extractTelegramInitData();
+          if (startParam || initData) break;
+        }
+
         if (initData) {
           try {
             await fetch('/api/tma/auth', {
@@ -57,12 +46,19 @@ export function TmaEntry() {
               body: JSON.stringify({ initData }),
             });
           } catch {
-            /* ignore auth network errors for guest open */
+            /* ignore */
           }
         }
 
         const parsed = parseStartParam(startParam);
+        if (cancelled) return;
+
         if (parsed.invitationId) {
+          try {
+            sessionStorage.removeItem('ot_tma_startapp');
+          } catch {
+            /* ignore */
+          }
           const qs = new URLSearchParams();
           if (parsed.guestName) qs.set('guest', parsed.guestName);
           const suffix = qs.toString() ? `?${qs.toString()}` : '';
@@ -72,9 +68,13 @@ export function TmaEntry() {
 
         router.replace('/builder');
       } catch {
-        setError('Telegram Mini App ochilmadi');
+        if (!cancelled) setError('Telegram Mini App ochilmadi');
       }
     })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [router, searchParams]);
 
   if (error) {
